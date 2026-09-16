@@ -51,7 +51,7 @@ export default function Home() {
           </div>
         </div>
         <div className="hero-mapa">
-          {mapa ? <Mapa3D mapa={mapa} rotas={rotas} origem={DEMO.origem} destino={DEMO.destino} camada={null} autoRotate interativo={false} />
+          {mapa ? <Mapa3D mapa={mapa} rotas={rotas} origem={DEMO.origem} destino={DEMO.destino} camada={null} autoRotate interativo={false} agora="10:20" />
             : <div className="hero-placeholder">{falhou ? <p className="muted centro">Não consegui carregar o mapa agora.</p> : <div className="loader" />}</div>}
         </div>
       </header>

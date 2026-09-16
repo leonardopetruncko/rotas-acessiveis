@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html, Line, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { NIVEL, TIPO_UI, ehDestino } from '../lib/tema.js';
+import { Estande, TIPOS_ABERTOS, agendaPorPonto, agoraSP } from './Cenario3D.jsx';
 
 const S = 0.01; // 1px da planta = 0.01 unidade de cena
 
@@ -312,8 +313,10 @@ function Rota({ pontos, cor, to3, idx = 0, total = 1, fraca = false, calmo = fal
 }
 
 // ---------------------------------------------------------------- cena
-function Cena({ mapa, rotas = [], origem, destino, camada, modo2D, autoRotate, interativo, onPontoClick, emergencia, selecionado, rotulos, calmo }) {
+function Cena({ mapa, rotas = [], origem, destino, camada, modo2D, autoRotate, interativo, onPontoClick, emergencia, selecionado, rotulos, calmo, agora }) {
   const { W, H, to3, P } = useGeo(mapa);
+  const hora = agora || agoraSP();
+  const agenda = useMemo(() => agendaPorPonto(mapa.programacao, hora), [mapa.programacao, hora]);
   const controls = useRef();
   const po = origem && P[origem] ? to3(P[origem].x, P[origem].y) : null;
   const principal = rotas.find(r => !r.fraca);
@@ -338,7 +341,9 @@ function Cena({ mapa, rotas = [], origem, destino, camada, modo2D, autoRotate, i
 
       <Piso W={W} H={H} />
       <Corredores mapa={mapa} P={P} to3={to3} camada={camada} />
-      {mapa.areas.map(a => <Area key={a.codigo} a={a} to3={to3} rotulos={rotulos} />)}
+      {mapa.areas.map(a => (TIPOS_ABERTOS.has(a.tipo)
+        ? <Estande key={a.codigo} a={a} to3={to3} P={P} rotulos={rotulos} agenda={agenda} />
+        : <Area key={a.codigo} a={a} to3={to3} rotulos={rotulos} />))}
       {!calmo && <Multidao mapa={mapa} P={P} to3={to3} agitada={emergencia} />}
       <Pontos mapa={mapa} to3={to3} onPontoClick={onPontoClick} emergencia={emergencia} selecionado={selecionado} />
 

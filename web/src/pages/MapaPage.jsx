@@ -4,6 +4,7 @@ import QrModal from '../components/QrModal.jsx';
 import Chat from '../components/Chat.jsx';
 import MenuAcessibilidade from '../components/MenuAcessibilidade.jsx';
 import { useAcessibilidade } from '../lib/acessibilidade.js';
+import { agendaPorPonto, agoraSP, hhmmDe, minutos } from '../components/Cenario3D.jsx';
 import { api, aoMudarModo, emModoOffline, lerParams } from '../api.js';
 import { falar, podeFalar } from '../lib/voz.js';
 import { NIVEL, NIVEL_TXT, PERFIS_UI, TIPO_UI, ehDestino } from '../lib/tema.js';
@@ -38,6 +39,15 @@ export default function MapaPage() {
 
   const ultimaRota = useRef({ chave: '', caminho: '' });
   const [a11y, alternarA11y] = useAcessibilidade();
+  const [horaSim, setHoraSim] = useState(params.get('hora') || null); // simular horário (demo/vídeo)
+  const [relogioAberto, setRelogioAberto] = useState(false);
+  const [horaReal, setHoraReal] = useState(agoraSP());
+  useEffect(() => { const id = setInterval(() => setHoraReal(agoraSP()), 30000); return () => clearInterval(id); }, []);
+  useEffect(() => {
+    const on = () => { const h = lerParams().get('hora'); if (h) setHoraSim(h); };
+    window.addEventListener('hashchange', on);
+    return () => window.removeEventListener('hashchange', on);
+  }, []);
   const evacuando = mapa?.evacuacao?.ativa === 'S';
 
   // evacuação acionada pelo organizador: todo aparelho entra no modo saída segura
@@ -188,7 +198,7 @@ export default function MapaPage() {
       )}
       <section className="mapa-wrap" aria-label="Mapa 3D do evento">
         <Mapa3D mapa={mapa} rotas={rotas3D} origem={origem} destino={destinoFinal} camada={camada}
-          modo2D={modo2D} emergencia={modo === 'saida'} selecionado={selecionado} calmo={a11y.semAnimacao}
+          modo2D={modo2D} emergencia={modo === 'saida'} selecionado={selecionado} calmo={a11y.semAnimacao} agora={horaSim || horaReal}
           onPontoClick={clicarPonto} onVazio={() => setSelecionado(null)} />
 
         <header className="mapa-topo">
@@ -216,6 +226,9 @@ export default function MapaPage() {
           </div>
           <button className="btn-icone" onClick={() => setQr(true)} title="QR codes dos totens">▦ QR</button>
         </div>
+
+        <Relogio mapa={mapa} hora={horaSim || horaReal} simulado={!!horaSim} aberto={relogioAberto} setAberto={setRelogioAberto}
+          setHora={setHoraSim} onVer={cod => setSelecionado(cod)} P={P} />
 
         {camada && (
           <div className="legenda">
@@ -428,6 +441,41 @@ function Comparacao({ res, perfil, setPerfil, setModo }) {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// Relógio do evento: mostra o que está ao vivo e permite simular outro horário (útil para demo e vídeo)
+function Relogio({ mapa, hora, simulado, aberto, setAberto, setHora, onVer, P }) {
+  const agenda = agendaPorPonto(mapa.programacao, hora);
+  const aoVivo = Object.entries(agenda).filter(([, v]) => v.aoVivo).map(([cod, v]) => ({ cod, ...v.aoVivo }));
+  const faixa = (mapa.programacao || []).map(p => [minutos(p.inicio), minutos(p.fim)]);
+  const min = faixa.length ? Math.min(...faixa.map(f => f[0])) - 30 : 480;
+  const max = faixa.length ? Math.max(...faixa.map(f => f[1])) + 30 : 1140;
+  return (
+    <div className={`relogio ${aberto ? 'aberto' : ''}`}>
+      <button className="relogio-topo" onClick={() => setAberto(a => !a)} aria-expanded={aberto}>
+        🕒 <b>{hora}</b>{simulado ? ' (simulado)' : ''}
+        {aoVivo.length > 0 && <span className="ao-vivo"><i />{aoVivo.length} ao vivo</span>}
+      </button>
+      {aberto && (
+        <div className="relogio-corpo">
+          {aoVivo.length ? aoVivo.map(a => (
+            <button key={a.cod + a.titulo} className="relogio-item" onClick={() => onVer(a.cod)}>
+              <span className="ao-vivo"><i />AO VIVO</span> {a.titulo} <small>{P[a.cod]?.nome} · até {a.fim}</small>
+            </button>
+          )) : <p className="muted small">Nada acontecendo neste horário.</p>}
+          <label className="campo">
+            <span>Simular horário do evento</span>
+            <input id="relogio-hora" type="range" min={min} max={max} step={5} value={Math.min(max, Math.max(min, minutos(hora)))}
+              onChange={e => setHora(hhmmDe(Number(e.target.value)))} />
+          </label>
+          <div className="row wrap">
+            {['10:15', '13:30', '14:10', '17:45'].map(h => <button key={h} className="chip" onClick={() => setHora(h)}>{h}</button>)}
+            {simulado && <button className="chip" onClick={() => setHora(null)}>Horário real</button>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

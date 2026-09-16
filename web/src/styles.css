@@ -366,3 +366,18 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .planta-svg svg { width: 100%; min-width: 560px; height: auto; }
 .legenda-planta { font-size: 14px; color: #334155; }
 @media print { .no-print { display: none !important; } .planta-pag { padding: 0; } }
+
+/* ---------------------------------------------------------------- ao vivo / relógio */
+.lbl-vivo { border-color: #f43f5e; box-shadow: 0 0 0 2px rgba(244, 63, 94, .35), 0 4px 14px rgba(0, 0, 0, .35); }
+.ao-vivo { display: inline-flex; align-items: center; gap: 5px; color: #fecdd3 !important; font-weight: 700; font-size: 10px; }
+.ao-vivo i { width: 7px; height: 7px; border-radius: 50%; background: #f43f5e; box-shadow: 0 0 0 0 rgba(244, 63, 94, .7); animation: pulso-vivo 1.2s infinite; }
+@keyframes pulso-vivo { 0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, .7); } 100% { box-shadow: 0 0 0 7px rgba(244, 63, 94, 0); } }
+.lbl .proxima { color: #fde68a !important; }
+.relogio { position: absolute; left: 12px; bottom: 58px; z-index: 5; max-width: min(92%, 340px); border-radius: 12px; background: rgba(13, 20, 38, .92); border: 1px solid var(--borda); backdrop-filter: blur(8px); }
+.relogio-topo { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 0; background: transparent; font-size: 13px; width: 100%; text-align: left; }
+.relogio-topo .ao-vivo { font-size: 12px; margin-left: auto; }
+.relogio-corpo { display: grid; gap: 8px; padding: 0 12px 12px; }
+.relogio-item { display: grid; gap: 2px; text-align: left; padding: 8px 10px; border-radius: 10px; border: 1px solid #7f1d2d; background: #2a0b13; font-size: 13px; }
+.relogio-item small { color: var(--muted); }
+.relogio input[type=range] { width: 100%; accent-color: var(--pri); }
+@media (max-width: 860px) { .relogio { bottom: 52px; } }
