@@ -81,7 +81,9 @@ CREATE OR REPLACE PACKAGE BODY ac_conversa AS
     -- genéricos que apontam para um tipo de lugar
     FOR g IN (SELECT 'palco' w, 'PALCO' t FROM dual UNION ALL SELECT 'banheiro', 'BANHEIRO_ADAP' FROM dual
               UNION ALL SELECT 'enfermaria', 'SERVICO' FROM dual UNION ALL SELECT 'comida', 'ALIMENTACAO' FROM dual
-              UNION ALL SELECT 'lanche', 'ALIMENTACAO' FROM dual UNION ALL SELECT 'hackathon', 'ARENA' FROM dual) LOOP
+              UNION ALL SELECT 'lanche', 'ALIMENTACAO' FROM dual UNION ALL SELECT 'hackathon', 'ARENA' FROM dual
+              UNION ALL SELECT 'calm', 'ACOLHIMENTO' FROM dual UNION ALL SELECT 'silencio', 'ACOLHIMENTO' FROM dual
+              UNION ALL SELECT 'descompress', 'ACOLHIMENTO' FROM dual) LOOP
       IF INSTR(p_norm, g.w) > 0 THEN
         SELECT MAX(codigo) KEEP (DENSE_RANK FIRST ORDER BY CASE WHEN LOWER(nome) LIKE '%brigada%' THEN 0 ELSE 1 END, id)
           INTO l_best FROM ac_ponto WHERE evento_id = p_ev AND tipo = g.t;
@@ -269,6 +271,11 @@ CREATE OR REPLACE PACKAGE BODY ac_conversa AS
       END;
     END IF;
 
+    -- emergência por similaridade fraca vira "quais são as saídas" (informa, não dispara alarme)
+    IF l_int = 'EMERGENCIA' AND l_metodo = 'VECTOR_SEARCH' AND l_d > 0.20 THEN
+      l_int := 'Q_SAIDAS';
+    END IF;
+
     -- 3) palavra-chave (busca híbrida)
     IF l_int IS NULL THEN
       l_metodo := 'PALAVRA_CHAVE';
@@ -300,6 +307,21 @@ CREATE OR REPLACE PACKAGE BODY ac_conversa AS
       ELSIF l_lugar IS NOT NULL AND REGEXP_LIKE(l_norm, '(me fal|fale sobre|o que e |o que tem n|o que acontece|sobre o |sobre a |como e )')
             AND l_int NOT IN ('Q_SOBRE_LUGAR', 'Q_PROGRAMACAO') THEN
         l_int := 'Q_SOBRE_LUGAR'; l_metodo := 'PALAVRA_CHAVE'; l_conf := NULL; l_frase := NULL;
+      -- tema específico ganha de resposta genérica ("tem rampa NO EVENTO?" é sobre rampa, não sobre o evento)
+      ELSIF REGEXP_LIKE(l_norm, '(rampa|acessib|elevador|degrau|escada)') AND l_int NOT IN ('Q_ACESSIBILIDADE', 'BANHEIRO', 'Q_ONDE_FICA') THEN
+        l_int := 'Q_ACESSIBILIDADE'; l_metodo := 'PALAVRA_CHAVE'; l_conf := NULL; l_frase := NULL;
+      ELSIF REGEXP_LIKE(l_norm, '(saida|sair do evento|ir embora)') AND l_int NOT IN ('Q_SAIDAS', 'EMERGENCIA') THEN
+        l_int := 'Q_SAIDAS'; l_metodo := 'PALAVRA_CHAVE'; l_conf := NULL; l_frase := NULL;
+      ELSIF REGEXP_LIKE(l_norm, '(cheio|lotad|vazio|muita gente|barulhent|tranquil|movimentad)') AND l_int IN ('Q_EVENTO', 'Q_O_QUE_TEM', 'Q_SAUDACAO') THEN
+        l_int := 'Q_LOTACAO'; l_metodo := 'PALAVRA_CHAVE'; l_conf := NULL; l_frase := NULL;
+      ELSIF REGEXP_LIKE(l_norm, '(banheiro|sanitario|toalete)') AND l_int IN ('Q_EVENTO', 'Q_O_QUE_TEM', 'Q_SAUDACAO', 'Q_ACESSIBILIDADE') THEN
+        l_int := 'Q_ONDE_FICA'; l_metodo := 'PALAVRA_CHAVE'; l_conf := NULL; l_frase := NULL;
+      ELSIF l_int IN ('Q_EVENTO', 'Q_O_QUE_TEM') AND l_lugar IS NOT NULL
+            AND NOT REGEXP_LIKE(l_norm, '(o que tem n|me fal|sobre)') THEN
+        l_int := 'Q_ONDE_FICA'; l_metodo := 'PALAVRA_CHAVE'; l_conf := NULL; l_frase := NULL;
+      ELSIF l_int IN ('Q_EVENTO', 'Q_O_QUE_TEM') AND l_ass.has('necessidade') THEN
+        l_int := l_ass.get_object('necessidade').get_string('codigo'); l_metodo := 'PALAVRA_CHAVE'; l_conf := NULL; l_frase := NULL;
+        IF l_int = 'EMERGENCIA' THEN l_int := 'Q_SAIDAS'; END IF; -- emergência automática só por regra de segurança
       ELSIF l_int = 'Q_EVENTO' AND REGEXP_LIKE(l_norm, '(o que tem|quais stands|atrac|visitar|expositor|empresas)') THEN
         l_int := 'Q_O_QUE_TEM'; l_metodo := 'PALAVRA_CHAVE'; l_conf := NULL; l_frase := NULL;
       END IF;
@@ -454,9 +476,15 @@ CREATE OR REPLACE PACKAGE BODY ac_conversa AS
         sugerir('O evento é acessível?', 'Onde fica a brigada?');
 
       WHEN l_int = 'EMERGENCIA' THEN
-        l_resp := '🚨 Mostrando agora a saída mais segura pra você. Mantenha a calma, siga a sinalização e as orientações da brigada.'
-               || NL || 'Se alguém estiver ferido, avise a equipe ou ligue 193 (Bombeiros) / 192 (SAMU).';
-        acao('SAIDA', NULL, 'Ver saída mais segura', TRUE);
+        IF l_metodo = 'REGRA_SEGURANCA' OR REGEXP_LIKE(l_norm, '(emergencia|socorro|perigo|evacu)') THEN
+          l_resp := '🚨 Mostrando agora a saída mais segura pra você. Mantenha a calma, siga a sinalização e as orientações da brigada.'
+                 || NL || 'Se alguém estiver ferido, avise a equipe ou ligue 193 (Bombeiros) / 192 (SAMU).';
+          acao('SAIDA', NULL, 'Ver saída mais segura', TRUE);
+        ELSE
+          l_resp := 'Posso te mostrar a saída mais indicada pra você a partir de onde está. Se for uma emergência, toque no botão abaixo ou no 🚨 do mapa.';
+          acao('SAIDA', NULL, 'Mostrar a saída mais segura');
+          sugerir('Quais são as saídas?');
+        END IF;
 
       WHEN l_int = 'MAL_ESTAR' THEN
         SELECT MAX(codigo) KEEP (DENSE_RANK FIRST ORDER BY CASE WHEN LOWER(nome) LIKE '%brigada%' THEN 0 ELSE 1 END, id)

@@ -99,6 +99,9 @@ CREATE OR REPLACE PACKAGE BODY ac_assistente AS
     EXCEPTION WHEN NO_DATA_FOUND THEN l_int := NULL;
     END;
 
+    -- emergência NUNCA por similaridade fraca (evita alarme falso): exige distância <= 0.20
+    IF l_int = 'EMERGENCIA' AND l_int_d > 0.20 THEN l_int := NULL; END IF;
+
     -- 3) guarda-corpo de segurança (regra explícita > similaridade)
     IF REGEXP_LIKE(l_norm, '(fogo|fumaca|incendio|queimad|evacu|explos|desab|teto|caindo|tiroteio|pisote|alarme|choque eletrico)') THEN
       l_int := 'EMERGENCIA'; l_metodo := 'REGRA_SEGURANCA';
