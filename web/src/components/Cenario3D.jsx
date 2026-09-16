@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { TIPO_UI } from '../lib/tema.js';
+import { Banner } from './Vida3D.jsx';
 
 const S = 0.01;
 export const TIPOS_ABERTOS = new Set(['STAND', 'PALCO', 'ARENA', 'ALIMENTACAO', 'ACOLHIMENTO']);
@@ -249,7 +250,7 @@ function MobiliaAcolhimento({ W, D, H }) {
 }
 
 // ---------------------------------------------------------------- estande aberto
-export function Estande({ a, to3, P, rotulos, agenda }) {
+export function Estande({ a, to3, P, rotulos, agenda, onPontoClick, calmo }) {
   const ui = TIPO_UI[a.tipo] || TIPO_UI.STAND;
   const cor = a.cor || ui.cor;
   const H = a.tipo === 'PALCO' ? 0.55 : a.tipo === 'ARENA' ? 0.45 : a.tipo === 'ACOLHIMENTO' ? 0.4 : 0.32;
@@ -292,7 +293,17 @@ export function Estande({ a, to3, P, rotulos, agenda }) {
         )}
         {a.tipo === 'ALIMENTACAO' && <MobiliaAlimentacao W={W} D={D} aoVivo={!!aoVivo} />}
         {a.tipo === 'ACOLHIMENTO' && <MobiliaAcolhimento W={W} D={D} H={H} />}
+        {a.tipo === 'STAND' && !calmo && <Banner cor={cor} W={W} altura={H + 0.75} />}
       </group>
+      {ponto && (
+        <mesh position-y={H / 2}
+          onClick={e => { e.stopPropagation(); onPontoClick?.(ponto.codigo); }}
+          onPointerOver={e => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
+          onPointerOut={() => { document.body.style.cursor = ''; }}>
+          <boxGeometry args={[w, H, d]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      )}
 
       {rotulos && (
         <Html center position={[0, H + (a.tipo === 'PALCO' ? 1.0 : 0.35), 0]} distanceFactor={10} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>

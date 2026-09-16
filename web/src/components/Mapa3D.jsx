@@ -4,6 +4,7 @@ import { Html, Line, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { NIVEL, TIPO_UI, ehDestino } from '../lib/tema.js';
 import { Estande, TIPOS_ABERTOS, agendaPorPonto, agoraSP } from './Cenario3D.jsx';
+import { Agentes, Estrutura, Feixe, PulsoCritico, Setas } from './Vida3D.jsx';
 
 const S = 0.01; // 1px da planta = 0.01 unidade de cena
 
@@ -18,22 +19,53 @@ function useGeo(mapa) {
 }
 
 // ---------------------------------------------------------------- câmera
-function Rig({ modo2D, controls, foco }) {
+// modos: visão geral · foco num lugar (alvo) · tour pelo que está acontecendo · seguir a rota
+function Rig({ modo2D, controls, foco, alvo, tourStops, seguirRef, seguindo }) {
   const { camera, size } = useThree();
   const animando = useRef(true);
-  useEffect(() => { animando.current = true; }, [modo2D, foco?.[0], foco?.[1]]);
-  useFrame((_, dt) => {
-    if (!animando.current) return;
-    const k = Math.min(2.4, Math.max(1, 1.3 / (size.width / size.height))); // afasta a câmera em telas estreitas
-    const alvo = modo2D ? new THREE.Vector3(0, 18 * k, 0.01) : new THREE.Vector3(0, 11.5 * k, 11 * k);
-    const olhar = new THREE.Vector3(foco?.[0] ?? 0, 0, foco?.[1] ?? 0.3).multiplyScalar(modo2D || k > 1 ? 0 : 0.35);
-    const f = 1 - Math.pow(0.002, dt);
-    camera.position.lerp(alvo.add(olhar), f);
-    if (controls.current) {
-      controls.current.target.lerp(olhar, f);
-      controls.current.update();
+  const tour = useRef({ i: 0, t: 0 });
+  const olhar = useMemo(() => new THREE.Vector3(), []);
+  const pos = useMemo(() => new THREE.Vector3(), []);
+  useEffect(() => { animando.current = true; }, [modo2D, foco?.[0], foco?.[1], alvo?.[0], alvo?.[1], tourStops?.length, seguindo]);
+
+  useFrame(({ clock }, dt) => {
+    const ctrl = controls.current;
+    const k = Math.min(2.4, Math.max(1, 1.3 / (size.width / size.height)));
+    let continuo = false;
+    let rapidez = 0.002;
+
+    if (seguindo && seguirRef?.current) {
+      const p = seguirRef.current;
+      olhar.set(p.x, 0.1, p.z);
+      pos.set(p.x + 1.4, 2.4, p.z + 2.6);
+      continuo = true; rapidez = 0.02;
+    } else if (tourStops?.length) {
+      tour.current.t += dt;
+      if (tour.current.t > 4.5) { tour.current.t = 0; tour.current.i = (tour.current.i + 1) % tourStops.length; }
+      const st = tourStops[tour.current.i];
+      const ang = clock.elapsedTime * 0.22 + tour.current.i;
+      olhar.set(st[0], 0.2, st[1]);
+      pos.set(st[0] + Math.sin(ang) * 3.4, 2.9, st[1] + Math.cos(ang) * 3.4);
+      continuo = true; rapidez = 0.05;
+    } else if (alvo) {
+      if (!animando.current) return;
+      olhar.set(alvo[0], 0, alvo[1]);
+      pos.set(alvo[0] + 0.4, modo2D ? 6 : 4.2, alvo[1] + (modo2D ? 0.01 : 3.9));
+    } else {
+      if (!animando.current) return;
+      olhar.set(foco?.[0] ?? 0, 0, foco?.[1] ?? 0.3).multiplyScalar(modo2D || k > 1 ? 0 : 0.35);
+      pos.set(0, (modo2D ? 18 : 11.5) * k, modo2D ? 0.01 : 11 * k).add(olhar);
     }
-    if (camera.position.distanceTo(alvo) < 0.03) animando.current = false;
+
+    const f = 1 - Math.pow(rapidez, dt);
+    camera.position.lerp(pos, f);
+    if (ctrl) {
+      ctrl.target.lerp(olhar, f);
+      ctrl.update();
+    } else {
+      camera.lookAt(olhar);
+    }
+    if (!continuo && camera.position.distanceTo(pos) < 0.03) animando.current = false;
   });
   return null;
 }
@@ -232,6 +264,7 @@ function Voce({ pos }) {
   });
   return (
     <group position={[pos[0], 0.03, pos[1]]}>
+      <Feixe pos={[0, 0]} cor="#38bdf8" altura={2.2} largura={0.16} />
       <mesh rotation-x={-Math.PI / 2} ref={ring}>
         <ringGeometry args={[0.13, 0.19, 40]} />
         <meshBasicMaterial color="#38bdf8" transparent />
@@ -252,6 +285,7 @@ function Destino({ pos, cor, nome }) {
   useFrame(({ clock }) => { g.current.position.y = 0.45 + Math.abs(Math.sin(clock.elapsedTime * 2.2)) * 0.18; });
   return (
     <group position={[pos[0], 0, pos[1]]}>
+      <Feixe pos={[0, 0]} cor={cor} altura={3.2} largura={0.26} />
       <group ref={g}>
         <mesh rotation-x={Math.PI} position-y={-0.14}>
           <coneGeometry args={[0.1, 0.26, 20]} />
@@ -269,7 +303,7 @@ function Destino({ pos, cor, nome }) {
   );
 }
 
-function Rota({ pontos, cor, to3, idx = 0, total = 1, fraca = false, calmo = false }) {
+function Rota({ pontos, cor, to3, idx = 0, total = 1, fraca = false, calmo = false, seguirRef }) {
   const off = total > 1 ? (idx - (total - 1) / 2) * 0.075 : 0;
   const pts = useMemo(() => pontos.map(p => {
     const [x, z] = to3(p.x, p.y);
@@ -283,7 +317,7 @@ function Rota({ pontos, cor, to3, idx = 0, total = 1, fraca = false, calmo = fal
   const dash = useRef();
   const walker = useRef();
   useFrame(({ clock }, dt) => {
-    if (calmo) return;
+    if (calmo && !seguirRef) return;
     if (dash.current?.material) dash.current.material.dashOffset -= dt * 0.9;
     if (walker.current && pts.length > 1) {
       const tot = acum[acum.length - 1];
@@ -292,6 +326,7 @@ function Rota({ pontos, cor, to3, idx = 0, total = 1, fraca = false, calmo = fal
       while (i < acum.length - 1 && acum[i] < t) i++;
       const f = (t - acum[i - 1]) / (acum[i] - acum[i - 1] || 1);
       walker.current.position.lerpVectors(pts[i - 1], pts[i], Math.min(1, Math.max(0, f)));
+      if (seguirRef) seguirRef.current = walker.current.position;
     }
   });
   if (pts.length < 2) return null;
@@ -302,7 +337,8 @@ function Rota({ pontos, cor, to3, idx = 0, total = 1, fraca = false, calmo = fal
         ? <Line points={pts} color={cor} lineWidth={2} dashed dashSize={0.12} gapSize={0.12} transparent opacity={0.7} />
         : <><Line points={pts} color="#0b1220" lineWidth={8} />
           <Line ref={dash} points={pts} color={cor} lineWidth={6} dashed dashSize={0.24} gapSize={0.1} /></>}
-      {!fraca && !calmo && (
+      {!fraca && <Setas pts={pts} cor={cor} calmo={calmo} />}
+      {!fraca && (!calmo || seguirRef) && (
         <mesh ref={walker}>
           <sphereGeometry args={[0.075, 16, 16]} />
           <meshStandardMaterial color="#ffffff" emissive={cor} emissiveIntensity={2.5} />
@@ -313,7 +349,7 @@ function Rota({ pontos, cor, to3, idx = 0, total = 1, fraca = false, calmo = fal
 }
 
 // ---------------------------------------------------------------- cena
-function Cena({ mapa, rotas = [], origem, destino, camada, modo2D, autoRotate, interativo, onPontoClick, emergencia, selecionado, rotulos, calmo, agora }) {
+function Cena({ mapa, rotas = [], origem, destino, camada, modo2D, autoRotate, interativo, onPontoClick, emergencia, selecionado, rotulos, calmo, agora, tour, seguir, onContagem }) {
   const { W, H, to3, P } = useGeo(mapa);
   const hora = agora || agoraSP();
   const agenda = useMemo(() => agendaPorPonto(mapa.programacao, hora), [mapa.programacao, hora]);
@@ -322,6 +358,15 @@ function Cena({ mapa, rotas = [], origem, destino, camada, modo2D, autoRotate, i
   const principal = rotas.find(r => !r.fraca);
   const destinoCod = destino || principal?.pontos?.[principal.pontos.length - 1]?.codigo;
   const pd = destinoCod && P[destinoCod] ? to3(P[destinoCod].x, P[destinoCod].y) : null;
+  const seguirRef = useRef(null);
+  const alvo = selecionado && P[selecionado] && !autoRotate ? to3(P[selecionado].x, P[selecionado].y) : null;
+  const tourStops = useMemo(() => {
+    if (!tour) return null;
+    const vivos = Object.entries(agenda).filter(([, v]) => v.aoVivo).map(([cod]) => cod);
+    const cods = [...new Set([...vivos, origem, destinoCod, 'ACOLH', 'ORACLE'].filter(c => c && P[c]))];
+    return cods.map(c => to3(P[c].x, P[c].y));
+  }, [tour, agenda, origem, destinoCod, P, to3]);
+  const saidas = emergencia ? mapa.pontos.filter(p => p.tipo === 'SAIDA' && p.bloqueado !== 'S') : [];
 
   return (
     <>
@@ -332,24 +377,28 @@ function Cena({ mapa, rotas = [], origem, destino, camada, modo2D, autoRotate, i
       <directionalLight position={[6, 12, 6]} intensity={1.3} />
       <pointLight position={[0, 4, 0]} intensity={emergencia ? 18 : 0} color="#ef4444" distance={20} />
 
-      <Rig modo2D={modo2D} controls={controls} foco={autoRotate ? null : po} />
+      <Rig modo2D={modo2D} controls={controls} foco={autoRotate ? null : po} alvo={alvo} tourStops={tourStops} seguirRef={seguirRef} seguindo={seguir} />
       <OrbitControls ref={controls} makeDefault enableDamping dampingFactor={0.08}
-        enableRotate={interativo && !modo2D} enableZoom={interativo} enablePan={interativo}
+        enabled={!tour && !seguir} enableRotate={interativo && !modo2D} enableZoom={interativo} enablePan={interativo}
         minDistance={4} maxDistance={32} maxPolarAngle={Math.PI / 2.25}
         autoRotate={autoRotate && !calmo} autoRotateSpeed={0.5}
         onStart={() => { /* usuário assumiu a câmera */ }} />
 
       <Piso W={W} H={H} />
+      {!calmo && <Estrutura W={W} H={H} emergencia={emergencia} />}
       <Corredores mapa={mapa} P={P} to3={to3} camada={camada} />
+      {!calmo && <PulsoCritico mapa={mapa} P={P} to3={to3} camada={camada} />}
       {mapa.areas.map(a => (TIPOS_ABERTOS.has(a.tipo)
-        ? <Estande key={a.codigo} a={a} to3={to3} P={P} rotulos={rotulos} agenda={agenda} />
+        ? <Estande key={a.codigo} a={a} to3={to3} P={P} rotulos={rotulos} agenda={agenda} onPontoClick={onPontoClick} calmo={calmo} />
         : <Area key={a.codigo} a={a} to3={to3} rotulos={rotulos} />))}
-      {!calmo && <Multidao mapa={mapa} P={P} to3={to3} agitada={emergencia} />}
+      {!calmo && <Agentes mapa={mapa} P={P} to3={to3} emergencia={emergencia} onContagem={onContagem} />}
+      {saidas.map(p => { const [x, z] = to3(p.x, p.y); return <Feixe key={p.codigo} pos={[x, z]} cor="#22c55e" altura={2.6} largura={0.3} />; })}
       <Pontos mapa={mapa} to3={to3} onPontoClick={onPontoClick} emergencia={emergencia} selecionado={selecionado} />
 
       {rotas.map((r, i) => (
         <Rota key={`${r.chave || i}-${r.pontos.map(p => p.codigo).join('-')}`} pontos={r.pontos} cor={r.cor} to3={to3}
-          idx={r.fraca ? 0 : i} total={rotas.filter(x => !x.fraca).length} fraca={r.fraca} calmo={calmo} />
+          idx={r.fraca ? 0 : i} total={rotas.filter(x => !x.fraca).length} fraca={r.fraca} calmo={calmo}
+          seguirRef={!r.fraca && r === principal ? seguirRef : undefined} />
       ))}
       {po && <Voce pos={po} />}
       {pd && destinoCod !== origem && <Destino pos={pd} cor={principal?.cor || '#22c55e'} nome={P[destinoCod].nome} />}
@@ -360,7 +409,7 @@ function Cena({ mapa, rotas = [], origem, destino, camada, modo2D, autoRotate, i
 export default function Mapa3D({ className, ...props }) {
   return (
     <div className={`mapa3d ${className || ''}`}>
-      <Canvas dpr={[1, 2]} camera={{ position: [0, 11, 10], fov: 45, near: 0.1, far: 100 }}
+      <Canvas dpr={[1, 1.75]} camera={{ position: [18, 26, 26], fov: 45, near: 0.1, far: 120 }}
         onPointerMissed={() => props.onVazio?.()}>
         <Cena interativo rotulos {...props} />
       </Canvas>

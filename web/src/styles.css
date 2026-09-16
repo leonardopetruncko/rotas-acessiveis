@@ -381,3 +381,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .relogio-item small { color: var(--muted); }
 .relogio input[type=range] { width: 100%; accent-color: var(--pri); }
 @media (max-width: 860px) { .relogio { bottom: 52px; } }
+
+.btn-icone.ligado { background: var(--pri) !important; color: #04131a; border-color: var(--pri); }
+.hud-evac { position: absolute; left: 50%; top: 110px; transform: translateX(-50%); z-index: 6; min-width: min(90%, 320px); padding: 10px 14px; border-radius: 14px; background: rgba(42, 11, 19, .92); border: 1px solid #ef4444; color: #fee2e2; font-size: 14px; text-align: center; display: grid; gap: 6px; }
+.hud-evac .barra { background: #450a0a; }
+.hud-evac .barra i { background: #22c55e; transition: width .4s; }
+.hud-evac small { color: #fca5a5; font-size: 11px; }

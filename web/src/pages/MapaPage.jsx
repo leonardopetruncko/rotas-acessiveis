@@ -41,6 +41,9 @@ export default function MapaPage() {
   const [a11y, alternarA11y] = useAcessibilidade();
   const [horaSim, setHoraSim] = useState(params.get('hora') || null); // simular horário (demo/vídeo)
   const [relogioAberto, setRelogioAberto] = useState(false);
+  const [tour, setTour] = useState(false);
+  const [seguir, setSeguir] = useState(false);
+  const [contagem, setContagem] = useState(null);
   const [horaReal, setHoraReal] = useState(agoraSP());
   useEffect(() => { const id = setInterval(() => setHoraReal(agoraSP()), 30000); return () => clearInterval(id); }, []);
   useEffect(() => {
@@ -199,6 +202,7 @@ export default function MapaPage() {
       <section className="mapa-wrap" aria-label="Mapa 3D do evento">
         <Mapa3D mapa={mapa} rotas={rotas3D} origem={origem} destino={destinoFinal} camada={camada}
           modo2D={modo2D} emergencia={modo === 'saida'} selecionado={selecionado} calmo={a11y.semAnimacao} agora={horaSim || horaReal}
+          tour={tour} seguir={seguir && rotas3D.length > 0} onContagem={setContagem}
           onPontoClick={clicarPonto} onVazio={() => setSelecionado(null)} />
 
         <header className="mapa-topo">
@@ -224,6 +228,8 @@ export default function MapaPage() {
             <button className={camada === 'ruido' ? 'on' : ''} onClick={() => setCamada('ruido')}>🔊 Ruído</button>
             <button className={!camada ? 'on' : ''} onClick={() => setCamada(null)}>Planta</button>
           </div>
+          <button className={`btn-icone ${tour ? 'ligado' : ''}`} onClick={() => { setTour(t => !t); setSeguir(false); setSelecionado(null); }} title="Passeio pelo evento">🎬 {tour ? 'Parar tour' : 'Tour'}</button>
+          <button className={`btn-icone ${seguir ? 'ligado' : ''}`} disabled={!rotas3D.length} onClick={() => { setSeguir(s => !s); setTour(false); setSelecionado(null); }} title="Câmera acompanha a rota">🎥 {seguir ? 'Parar' : 'Seguir rota'}</button>
           <button className="btn-icone" onClick={() => setQr(true)} title="QR codes dos totens">▦ QR</button>
         </div>
 
@@ -235,6 +241,14 @@ export default function MapaPage() {
             <span>{camada === 'lotacao' ? 'Lotação' : 'Ruído'}</span>
             {[1, 2, 3, 4, 5].map(n => <i key={n} style={{ background: NIVEL[n] }} title={NIVEL_TXT[n]} />)}
             <small>baixo → crítico · ao vivo</small>
+          </div>
+        )}
+
+        {modo === 'saida' && contagem && !a11y.semAnimacao && (
+          <div className="hud-evac" role="status">
+            <div><b>🏃 {contagem.total - contagem.saidos}</b> ainda no pavilhão · <b>✅ {contagem.saidos}</b> já saíram</div>
+            <div className="barra"><i style={{ width: `${Math.round((contagem.saidos / Math.max(1, contagem.total)) * 100)}%` }} /></div>
+            <small>simulação do fluxo até as saídas</small>
           </div>
         )}
 
