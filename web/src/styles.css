@@ -134,6 +134,8 @@ button.chip:hover { border-color: var(--pri); }
 .pergunta input { flex: 1; min-width: 0; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--borda); background: #0a1122; }
 .resposta { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: #0b2530; border: 1px solid #155e63; color: #ccfbf1; font-size: 14px; }
 
+.resposta p { margin: 0; }
+.resposta .explica { display: block; margin-top: 6px; color: #7dd3c0; font-size: 12px; }
 .perfis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .perfil { display: grid; justify-items: center; gap: 2px; padding: 10px 4px; border-radius: 12px; border: 1px solid var(--borda); background: var(--card2); font-size: 12px; }
 .perfil .ico { font-size: 22px; }

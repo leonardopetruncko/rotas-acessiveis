@@ -108,15 +108,31 @@ export default function MapaPage() {
   const irPara = (cod, novoModo = 'rota') => { setDestino(cod); setModo(novoModo); };
   const emergencia = () => { setModo('saida'); avisar('🚨 Modo emergência: mostrando a saída mais segura para o seu perfil.', 'alerta'); };
 
-  const perguntar = texto => {
+  const perguntar = async texto => {
     const q = (texto ?? pergunta).trim();
     if (!q || !mapa) return;
-    const i = interpretar(q, mapa.pontos, mapa.perfis);
+    setResposta({ texto: 'Entendendo…' });
+    let i;
+    try {
+      // 1º: Oracle (modelo ONNX in-database + AI Vector Search)
+      const r = await api.assistente(ev, q);
+      if (r) {
+        i = {
+          perfil: r.perfil?.codigo, origem: r.origem?.codigo, destino: r.destino?.codigo, modo: r.modo,
+          resposta: r.resposta, naoEntendi: !r.entendido,
+          explicacao: r.necessidade && {
+            metodo: r.necessidade.metodo, confianca: r.necessidade.confianca, parecida: r.necessidade.frase_parecida,
+          },
+        };
+      }
+    } catch { /* cai nas regras locais */ }
+    // offline: regras locais no aparelho
+    if (!i) i = { ...interpretar(q, mapa.pontos, mapa.perfis), explicacao: { metodo: 'REGRAS_LOCAIS' } };
     if (i.perfil) setPerfil(i.perfil);
     if (i.origem) setOrigem(i.origem);
     if (i.modo === 'saida') setModo('saida');
     else if (i.destino) { setDestino(i.destino); setModo(m => (m === 'comparar' ? 'comparar' : 'rota')); }
-    setResposta(i.resposta);
+    setResposta({ texto: i.resposta, explicacao: i.explicacao });
     if (!i.naoEntendi) setPergunta('');
   };
 
@@ -243,7 +259,18 @@ export default function MapaPage() {
             {podeOuvir && <button type="button" className={`btn-icone ${ouvindo ? 'gravando' : ''}`} onClick={microfone} aria-label="Falar">🎤</button>}
             <button className="btn-icone btn-pri" aria-label="Enviar">➤</button>
           </form>
-          {resposta && <p className="resposta">{resposta}</p>}
+          {resposta && (
+            <div className="resposta">
+              <p>{resposta.texto}</p>
+              {resposta.explicacao && (
+                <small className="explica">
+                  {{ VECTOR_SEARCH: '🧠 Vector Search no Oracle', REGRA_SEGURANCA: '🛡️ Regra de segurança', PALAVRA_CHAVE: '🔤 Palavra-chave', REGRAS_LOCAIS: '📴 Regras locais (offline)' }[resposta.explicacao.metodo] || resposta.explicacao.metodo}
+                  {resposta.explicacao.confianca != null && ` · confiança ${Math.round(resposta.explicacao.confianca * 100)}%`}
+                  {resposta.explicacao.parecida && ` · parecido com “${resposta.explicacao.parecida}”`}
+                </small>
+              )}
+            </div>
+          )}
           <div className="chips">
             {['O barulho está insuportável, preciso de um lugar calmo', 'Estou de cadeira de rodas, onde fica o banheiro?', 'Emergência! Como eu saio daqui?'].map(s => (
               <button key={s} className="chip" onClick={() => perguntar(s)}>{s}</button>
