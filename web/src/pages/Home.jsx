@@ -8,9 +8,10 @@ const DEMO = { ev: 'NEXT26', origem: 'ORACLE', destino: 'ACOLH' };
 export default function Home() {
   const [mapa, setMapa] = useState(null);
   const [comp, setComp] = useState(null);
+  const [falhou, setFalhou] = useState(false);
 
   useEffect(() => {
-    api.mapa(DEMO.ev).then(setMapa).catch(() => {});
+    api.mapa(DEMO.ev).then(setMapa).catch(() => setFalhou(true));
     api.comparar(DEMO.ev, { origem: DEMO.origem, destino: DEMO.destino }).then(setComp).catch(() => {});
   }, []);
 
@@ -51,7 +52,7 @@ export default function Home() {
         </div>
         <div className="hero-mapa">
           {mapa ? <Mapa3D mapa={mapa} rotas={rotas} origem={DEMO.origem} destino={DEMO.destino} camada={null} autoRotate interativo={false} />
-            : <div className="hero-placeholder"><div className="loader" /></div>}
+            : <div className="hero-placeholder">{falhou ? <p className="muted centro">📡 Não consegui falar com o banco agora.<br />Tente pelo 4G ou sem bloqueador.</p> : <div className="loader" />}</div>}
         </div>
       </header>
 
