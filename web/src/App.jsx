@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import Home from './pages/Home.jsx';
 import MapaPage from './pages/MapaPage.jsx';
+import OrganizadorPage from './pages/OrganizadorPage.jsx';
+import ValidacaoPage from './pages/ValidacaoPage.jsx';
+import PlantaPage from './pages/PlantaPage.jsx';
 
 // roteamento por hash: #/ (home) e #/app?evento=&origem=&destino=&perfil=
 function rotaAtual() {
@@ -19,5 +22,9 @@ export default function App() {
     window.addEventListener('hashchange', on);
     return () => window.removeEventListener('hashchange', on);
   }, []);
-  return rota.startsWith('/app') ? <MapaPage /> : <Home />;
+  if (rota.startsWith('/app')) return <MapaPage />;
+  if (rota.startsWith('/organizador')) return <OrganizadorPage />;
+  if (rota.startsWith('/validacao')) return <ValidacaoPage />;
+  if (rota.startsWith('/planta')) return <PlantaPage />;
+  return <Home />;
 }

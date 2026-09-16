@@ -117,6 +117,10 @@ export default function Home() {
       </section>
 
       <footer className="rodape">
+        <div className="row wrap centro-flex">
+          <a href={linkDemo}>Mapa 3D</a> · <a href="#/organizador?evento=NEXT26">Painel do organizador</a> ·
+          <a href="#/validacao?evento=NEXT26">Teste com usuários</a> · <a href="#/planta?evento=NEXT26">Planta impressa</a>
+        </div>
         Rotas Acessíveis · Tech4Change 2026 · FIAP · Oracle Autonomous AI Database + React
       </footer>
     </div>

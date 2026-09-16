@@ -1,0 +1,490 @@
+{
+  "rodada": "depois_do_treino_3_ajuste",
+  "por_categoria": {
+    "Pergunta": 82,
+    "Necessidade": 100,
+    "FAQ": 100
+  },
+  "total": 93,
+  "resultados": [
+    {
+      "texto": "e aí, beleza?",
+      "esperado": "Q_SAUDACAO",
+      "obtido": "Q_SAUDACAO",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "você é um robô?",
+      "esperado": "Q_SAUDACAO",
+      "obtido": "Q_SAUDACAO",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "qual é esse evento aqui?",
+      "esperado": "Q_EVENTO",
+      "obtido": "Q_EVENTO",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "que feira é essa",
+      "esperado": "Q_EVENTO",
+      "obtido": "Q_EVENTO",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "que empresas vieram?",
+      "esperado": "Q_O_QUE_TEM",
+      "obtido": "Q_O_QUE_TEM",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "tem stand de cloud?",
+      "esperado": "Q_O_QUE_TEM",
+      "obtido": "Q_O_QUE_TEM",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "cadê a arena do hackathon",
+      "esperado": "Q_ONDE_FICA",
+      "obtido": "Q_ONDE_FICA",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "preciso achar o stand da IBM",
+      "esperado": "Q_ONDE_FICA",
+      "obtido": "Q_ONDE_FICA",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "qual o caminho pro palco",
+      "esperado": "Q_ONDE_FICA",
+      "obtido": "Q_ACESSIBILIDADE",
+      "ok": false,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "o que rola no fiap labs?",
+      "esperado": "Q_SOBRE_LUGAR",
+      "obtido": "Q_SOBRE_LUGAR",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "me explica o stand da nvidia",
+      "esperado": "Q_SOBRE_LUGAR",
+      "obtido": "Q_SOBRE_LUGAR",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "tem alguma palestra depois das 3?",
+      "esperado": "Q_PROGRAMACAO",
+      "obtido": "Q_PROGRAMACAO",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "quando é o show de encerramento?",
+      "esperado": "Q_PROGRAMACAO",
+      "obtido": "Q_PROGRAMACAO",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "dá pra ir de cadeira de rodas pra todo lugar?",
+      "esperado": "Q_ACESSIBILIDADE",
+      "obtido": "FAQ:CADEIRA_EMPRESTIMO",
+      "ok": false,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "onde tem degrau no caminho?",
+      "esperado": "Q_ACESSIBILIDADE",
+      "obtido": "FAQ:COMO_FUNCIONA",
+      "ok": false,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "qual corredor tá mais vazio?",
+      "esperado": "Q_LOTACAO",
+      "obtido": "Q_LOTACAO",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "tá muito lotado lá na frente do palco?",
+      "esperado": "Q_LOTACAO",
+      "obtido": "Q_LOTACAO",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "quantas saídas de emergência existem?",
+      "esperado": "Q_SAIDAS",
+      "obtido": "Q_SAIDAS",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "qual saída é mais perto?",
+      "esperado": "Q_SAIDAS",
+      "obtido": "Q_SAIDAS",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "valeu pela ajuda!",
+      "esperado": "Q_OBRIGADO",
+      "obtido": "Q_OBRIGADO",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "preciso fazer xixi urgente",
+      "esperado": "BANHEIRO",
+      "obtido": "BANHEIRO",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "banheiro pra cadeirante",
+      "esperado": "BANHEIRO",
+      "obtido": "BANHEIRO",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "bateu uma fome aqui",
+      "esperado": "COMIDA",
+      "obtido": "COMIDA",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "onde compro água?",
+      "esperado": "FAQ:AGUA",
+      "obtido": "FAQ:AGUA",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "minha filha tá em crise, muito barulho",
+      "esperado": "CRISE_SENSORIAL",
+      "obtido": "CRISE_SENSORIAL",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "preciso de silêncio, tô sobrecarregado",
+      "esperado": "CRISE_SENSORIAL",
+      "obtido": "CRISE_SENSORIAL",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "estou com falta de ar",
+      "esperado": "MAL_ESTAR",
+      "obtido": "MAL_ESTAR",
+      "ok": true,
+      "metodo": "REGRA_SEGURANCA",
+      "alarme_falso": false
+    },
+    {
+      "texto": "meu pai caiu e está sangrando",
+      "esperado": "MAL_ESTAR",
+      "obtido": "MAL_ESTAR",
+      "ok": true,
+      "metodo": "REGRA_SEGURANCA",
+      "alarme_falso": false
+    },
+    {
+      "texto": "tem cheiro de fumaça no corredor",
+      "esperado": "EMERGENCIA",
+      "obtido": "EMERGENCIA",
+      "ok": true,
+      "metodo": "REGRA_SEGURANCA",
+      "alarme_falso": false
+    },
+    {
+      "texto": "pegou fogo no stand!",
+      "esperado": "EMERGENCIA",
+      "obtido": "EMERGENCIA",
+      "ok": true,
+      "metodo": "REGRA_SEGURANCA",
+      "alarme_falso": false
+    },
+    {
+      "texto": "perdi meu filho",
+      "esperado": "FAQ:CRIANCA_PERDIDA",
+      "obtido": "FAQ:CRIANCA_PERDIDA",
+      "ok": true,
+      "metodo": "REGRA_SEGURANCA",
+      "alarme_falso": false
+    },
+    {
+      "texto": "não acho minha criança",
+      "esperado": "FAQ:CRIANCA_PERDIDA",
+      "obtido": "FAQ:CRIANCA_PERDIDA",
+      "ok": true,
+      "metodo": "REGRA_SEGURANCA",
+      "alarme_falso": false
+    },
+    {
+      "texto": "qual a senha do wifi?",
+      "esperado": "FAQ:WIFI",
+      "obtido": "FAQ:WIFI",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "tem internet aqui?",
+      "esperado": "FAQ:WIFI",
+      "obtido": "FAQ:WIFI",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "perdi minha carteira",
+      "esperado": "FAQ:ACHADOS_PERDIDOS",
+      "obtido": "FAQ:ACHADOS_PERDIDOS",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "onde entregam objetos perdidos",
+      "esperado": "FAQ:ACHADOS_PERDIDOS",
+      "obtido": "FAQ:ACHADOS_PERDIDOS",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "tem intérprete de libras?",
+      "esperado": "FAQ:LIBRAS",
+      "obtido": "FAQ:LIBRAS",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "as palestras têm legenda?",
+      "esperado": "FAQ:LIBRAS",
+      "obtido": "FAQ:LIBRAS",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "posso entrar com meu cão-guia?",
+      "esperado": "FAQ:CAO_GUIA",
+      "obtido": "FAQ:CAO_GUIA",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "onde carrego meu celular?",
+      "esperado": "FAQ:CARREGAR_CELULAR",
+      "obtido": "FAQ:CARREGAR_CELULAR",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "minha bateria acabou",
+      "esperado": "FAQ:CARREGAR_CELULAR",
+      "obtido": "FAQ:CARREGAR_CELULAR",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "vocês emprestam cadeira de rodas?",
+      "esperado": "FAQ:CADEIRA_EMPRESTIMO",
+      "obtido": "FAQ:CADEIRA_EMPRESTIMO",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "tem abafador de ouvido?",
+      "esperado": "FAQ:ABAFADOR",
+      "obtido": "FAQ:ABAFADOR",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "onde pego minha credencial?",
+      "esperado": "FAQ:CREDENCIAL",
+      "obtido": "FAQ:CREDENCIAL",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "quero falar com alguém da organização",
+      "esperado": "FAQ:FALAR_EQUIPE",
+      "obtido": "FAQ:FALAR_EQUIPE",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "posso fumar aqui dentro?",
+      "esperado": "FAQ:FUMAR",
+      "obtido": "FAQ:FUMAR",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "onde estaciono o carro?",
+      "esperado": "FAQ:ESTACIONAMENTO",
+      "obtido": "FAQ:ESTACIONAMENTO",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "como você calcula a rota?",
+      "esperado": "FAQ:COMO_FUNCIONA",
+      "obtido": "FAQ:COMO_FUNCIONA",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "você usa inteligência artificial?",
+      "esperado": "FAQ:COMO_FUNCIONA",
+      "obtido": "FAQ:COMO_FUNCIONA",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "vocês guardam meus dados?",
+      "esperado": "FAQ:PRIVACIDADE",
+      "obtido": "FAQ:PRIVACIDADE",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "você está me rastreando?",
+      "esperado": "FAQ:PRIVACIDADE",
+      "obtido": "FAQ:PRIVACIDADE",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "você decide o caminho por mim?",
+      "esperado": "FAQ:QUEM_DECIDE",
+      "obtido": "FAQ:QUEM_DECIDE",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "quais perfis existem no app?",
+      "esperado": "FAQ:PERFIS",
+      "obtido": "FAQ:PERFIS",
+      "ok": true,
+      "metodo": "PALAVRA_CHAVE",
+      "alarme_falso": false
+    },
+    {
+      "texto": "como aviso que um corredor tá bloqueado?",
+      "esperado": "FAQ:COMO_REPORTAR",
+      "obtido": "FAQ:COMO_REPORTAR",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "pra que serve o QR code do totem?",
+      "esperado": "FAQ:QR",
+      "obtido": "FAQ:QR",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "sou autista, qual o melhor caminho pra sala calma?",
+      "esperado": "CRISE_SENSORIAL",
+      "obtido": "CRISE_SENSORIAL",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "vim de muleta, onde fica o banheiro?",
+      "esperado": "BANHEIRO",
+      "obtido": "BANHEIRO",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "what's happening now?",
+      "esperado": "Q_PROGRAMACAO",
+      "obtido": "NAO_ENTENDEU",
+      "ok": false,
+      "alarme_falso": false
+    },
+    {
+      "texto": "where is the bathroom?",
+      "esperado": "BANHEIRO",
+      "obtido": "BANHEIRO",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    },
+    {
+      "texto": "dónde está la salida?",
+      "esperado": "Q_SAIDAS",
+      "obtido": "Q_SAIDAS",
+      "ok": true,
+      "metodo": "VECTOR_SEARCH",
+      "alarme_falso": false
+    }
+  ]
+}

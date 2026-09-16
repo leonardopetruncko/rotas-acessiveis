@@ -268,7 +268,7 @@ function Destino({ pos, cor, nome }) {
   );
 }
 
-function Rota({ pontos, cor, to3, idx = 0, total = 1, fraca = false }) {
+function Rota({ pontos, cor, to3, idx = 0, total = 1, fraca = false, calmo = false }) {
   const off = total > 1 ? (idx - (total - 1) / 2) * 0.075 : 0;
   const pts = useMemo(() => pontos.map(p => {
     const [x, z] = to3(p.x, p.y);
@@ -282,6 +282,7 @@ function Rota({ pontos, cor, to3, idx = 0, total = 1, fraca = false }) {
   const dash = useRef();
   const walker = useRef();
   useFrame(({ clock }, dt) => {
+    if (calmo) return;
     if (dash.current?.material) dash.current.material.dashOffset -= dt * 0.9;
     if (walker.current && pts.length > 1) {
       const tot = acum[acum.length - 1];
@@ -300,7 +301,7 @@ function Rota({ pontos, cor, to3, idx = 0, total = 1, fraca = false }) {
         ? <Line points={pts} color={cor} lineWidth={2} dashed dashSize={0.12} gapSize={0.12} transparent opacity={0.7} />
         : <><Line points={pts} color="#0b1220" lineWidth={8} />
           <Line ref={dash} points={pts} color={cor} lineWidth={6} dashed dashSize={0.24} gapSize={0.1} /></>}
-      {!fraca && (
+      {!fraca && !calmo && (
         <mesh ref={walker}>
           <sphereGeometry args={[0.075, 16, 16]} />
           <meshStandardMaterial color="#ffffff" emissive={cor} emissiveIntensity={2.5} />
@@ -311,7 +312,7 @@ function Rota({ pontos, cor, to3, idx = 0, total = 1, fraca = false }) {
 }
 
 // ---------------------------------------------------------------- cena
-function Cena({ mapa, rotas = [], origem, destino, camada, modo2D, autoRotate, interativo, onPontoClick, emergencia, selecionado, rotulos }) {
+function Cena({ mapa, rotas = [], origem, destino, camada, modo2D, autoRotate, interativo, onPontoClick, emergencia, selecionado, rotulos, calmo }) {
   const { W, H, to3, P } = useGeo(mapa);
   const controls = useRef();
   const po = origem && P[origem] ? to3(P[origem].x, P[origem].y) : null;
@@ -332,18 +333,18 @@ function Cena({ mapa, rotas = [], origem, destino, camada, modo2D, autoRotate, i
       <OrbitControls ref={controls} makeDefault enableDamping dampingFactor={0.08}
         enableRotate={interativo && !modo2D} enableZoom={interativo} enablePan={interativo}
         minDistance={4} maxDistance={32} maxPolarAngle={Math.PI / 2.25}
-        autoRotate={autoRotate} autoRotateSpeed={0.5}
+        autoRotate={autoRotate && !calmo} autoRotateSpeed={0.5}
         onStart={() => { /* usuário assumiu a câmera */ }} />
 
       <Piso W={W} H={H} />
       <Corredores mapa={mapa} P={P} to3={to3} camada={camada} />
       {mapa.areas.map(a => <Area key={a.codigo} a={a} to3={to3} rotulos={rotulos} />)}
-      <Multidao mapa={mapa} P={P} to3={to3} agitada={emergencia} />
+      {!calmo && <Multidao mapa={mapa} P={P} to3={to3} agitada={emergencia} />}
       <Pontos mapa={mapa} to3={to3} onPontoClick={onPontoClick} emergencia={emergencia} selecionado={selecionado} />
 
       {rotas.map((r, i) => (
         <Rota key={`${r.chave || i}-${r.pontos.map(p => p.codigo).join('-')}`} pontos={r.pontos} cor={r.cor} to3={to3}
-          idx={r.fraca ? 0 : i} total={rotas.filter(x => !x.fraca).length} fraca={r.fraca} />
+          idx={r.fraca ? 0 : i} total={rotas.filter(x => !x.fraca).length} fraca={r.fraca} calmo={calmo} />
       ))}
       {po && <Voce pos={po} />}
       {pd && destinoCod !== origem && <Destino pos={pd} cor={principal?.cor || '#22c55e'} nome={P[destinoCod].nome} />}

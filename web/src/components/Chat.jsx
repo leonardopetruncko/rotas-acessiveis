@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { conversaLocal } from '../lib/conversaLocal.js';
 import { calar, falar, ouvir, podeFalar, podeOuvir } from '../lib/voz.js';
+import { simplificar } from '../lib/acessibilidade.js';
 
 const METODO = {
   VECTOR_SEARCH: '🧠 Vector Search no Oracle',
@@ -11,7 +12,7 @@ const METODO = {
 };
 
 // Conversa com a assistente do evento. Ela informa e sugere; ações só acontecem quando a pessoa toca.
-export default function Chat({ ev, mapa, origem, perfil, onAcao, onContexto, onLugar, onErro }) {
+export default function Chat({ ev, mapa, origem, perfil, onAcao, onContexto, onLugar, onErro, a11y = {} }) {
   const inicial = {
     de: 'ia',
     texto: `Oi! Sou a assistente do ${mapa.evento.nome}. Pergunte o que tem no evento, onde fica algum lugar, o que está acontecendo agora — ou me conte do que você precisa.`,
@@ -43,6 +44,7 @@ export default function Chat({ ev, mapa, origem, perfil, onAcao, onContexto, onL
     if (r.contexto) onContexto?.(r.contexto);
     if (r.lugar?.codigo) onLugar?.(r.lugar.codigo);
     if (r.acao?.automatica) onAcao?.(r.acao);
+    if (a11y.lerAuto) falar(a11y.simples ? simplificar(r.resposta) : r.resposta);
   }
 
   function microfone() {
@@ -64,7 +66,7 @@ export default function Chat({ ev, mapa, origem, perfil, onAcao, onContexto, onL
       <div className="chat-msgs" role="log" aria-live="polite">
         {msgs.map((m, i) => (
           <div key={i} className={`bolha ${m.de}`}>
-            <p>{m.texto}</p>
+            <p>{m.de === 'ia' && a11y.simples ? simplificar(m.texto) : m.texto}</p>
             {m.de === 'ia' && (m.acao || (podeFalar && i > 0)) && (
               <div className="bolha-acoes">
                 {m.acao && !m.acao.automatica && (

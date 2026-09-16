@@ -2,11 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Mapa3D from '../components/Mapa3D.jsx';
 import QrModal from '../components/QrModal.jsx';
 import Chat from '../components/Chat.jsx';
+import MenuAcessibilidade from '../components/MenuAcessibilidade.jsx';
+import { useAcessibilidade } from '../lib/acessibilidade.js';
 import { api, aoMudarModo, emModoOffline, lerParams } from '../api.js';
 import { falar, podeFalar } from '../lib/voz.js';
 import { NIVEL, NIVEL_TXT, PERFIS_UI, TIPO_UI, ehDestino } from '../lib/tema.js';
 
-const assinatura = m => m ? m.trechos.map(t => `${t.ruido}${t.lotacao}${t.bloqueado}`).join('') + m.pontos.map(p => p.bloqueado).join('') : '';
+const assinatura = m => m ? m.trechos.map(t => `${t.ruido}${t.lotacao}${t.bloqueado}`).join('') + m.pontos.map(p => p.bloqueado).join('')
+  + (m.evacuacao?.ativa || '') + (m.evacuacao?.mensagem || '') : '';
 const caminho = r => r?.pontos?.map(p => p.codigo).join('>') || '';
 
 export default function MapaPage() {
@@ -34,6 +37,23 @@ export default function MapaPage() {
   useEffect(() => aoMudarModo(setOffline), []);
 
   const ultimaRota = useRef({ chave: '', caminho: '' });
+  const [a11y, alternarA11y] = useAcessibilidade();
+  const evacuando = mapa?.evacuacao?.ativa === 'S';
+
+  // evacuação acionada pelo organizador: todo aparelho entra no modo saída segura
+  const evacAnterior = useRef(false);
+  useEffect(() => {
+    if (evacuando && !evacAnterior.current) {
+      setModo('saida');
+      falar(`Atenção. Evacuação em andamento. ${mapa.evacuacao.mensagem || ''}. Siga para a saída indicada no mapa.`);
+    }
+    evacAnterior.current = evacuando;
+  }, [evacuando]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "humano decide": registra a escolha da pessoa (anônimo)
+  const registrarDecisao = (tipo, extra = {}) => {
+    api.decisao(ev, { perfil, origem, destino: modo === 'saida' ? res?.saida_sugerida?.codigo : destino, modo, caminho: caminho(res), decisao: tipo, ...extra });
+  };
 
   const avisar = useCallback((txt, tipo = 'info') => {
     setToast({ txt, tipo, id: Date.now() });
@@ -161,9 +181,14 @@ export default function MapaPage() {
 
   return (
     <div className={`app ${modo === 'saida' ? 'app-emergencia' : ''}`}>
+      {evacuando && (
+        <div className="faixa-evacuacao" role="alert">
+          🚨 EVACUAÇÃO EM ANDAMENTO{mapa.evacuacao.mensagem ? ` — ${mapa.evacuacao.mensagem}` : ''}. Siga a rota verde até a saída e as orientações da brigada.
+        </div>
+      )}
       <section className="mapa-wrap" aria-label="Mapa 3D do evento">
         <Mapa3D mapa={mapa} rotas={rotas3D} origem={origem} destino={destinoFinal} camada={camada}
-          modo2D={modo2D} emergencia={modo === 'saida'} selecionado={selecionado}
+          modo2D={modo2D} emergencia={modo === 'saida'} selecionado={selecionado} calmo={a11y.semAnimacao}
           onPontoClick={clicarPonto} onVazio={() => setSelecionado(null)} />
 
         <header className="mapa-topo">
@@ -171,6 +196,7 @@ export default function MapaPage() {
           <select className="sel-evento" value={ev} onChange={e => { setEv(e.target.value); setOrigem(null); setDestino(null); }} aria-label="Evento">
             {(eventos.length ? eventos : [{ codigo: ev, nome: mapa.evento.nome }]).map(e => <option key={e.codigo} value={e.codigo}>{e.nome}</option>)}
           </select>
+          <MenuAcessibilidade prefs={a11y} alternar={alternarA11y} />
           {offline && (
             <span className="badge-offline" title="Sem conexão com o Oracle: rotas calculadas no aparelho com a última cópia do mapa. Reportes ficam só neste aparelho.">
               📴 Offline
@@ -216,7 +242,7 @@ export default function MapaPage() {
       </section>
 
       <aside className="painel">
-        <Chat ev={ev} mapa={mapa} origem={origem} perfil={perfil} onAcao={acaoChat} onContexto={contextoChat}
+        <Chat ev={ev} mapa={mapa} origem={origem} perfil={perfil} onAcao={acaoChat} onContexto={contextoChat} a11y={a11y}
           onLugar={cod => setSelecionado(cod)} onErro={msg => avisar(msg, 'erro')} />
 
         {/* perfil */}
@@ -261,10 +287,14 @@ export default function MapaPage() {
         {/* resultado */}
         {calculando && !res && <div className="card"><div className="loader" /></div>}
         {res && modo !== 'comparar' && (
-          <Resultado res={res} modo={modo} cor={modo === 'saida' ? '#22c55e' : corPerfil(perfil)} decisao={decisao} setDecisao={setDecisao}
+          <Resultado res={res} modo={modo} cor={modo === 'saida' ? '#22c55e' : corPerfil(perfil)} decisao={decisao}
+            setDecisao={d => { setDecisao(d); registrarDecisao(d === 'seguir' ? 'SEGUIU' : 'OUTRA_OPCAO'); }}
             preview={preview} setPreview={setPreview} irPara={irPara} setModo={setModo} calculando={calculando} />
         )}
-        {res && modo === 'comparar' && <Comparacao res={res} perfil={perfil} setPerfil={setPerfil} setModo={setModo} />}
+        {res && modo === 'comparar' && (
+          <Comparacao res={res} perfil={perfil} setModo={setModo}
+            setPerfil={p => { if (p !== perfil) registrarDecisao('TROCOU_PERFIL', { perfil: p }); setPerfil(p); }} />
+        )}
         {!res && modo === 'rota' && !destino && (
           <div className="card vazio">Escolha um destino, toque num lugar do mapa ou fale com o assistente.</div>
         )}
@@ -293,6 +323,11 @@ export default function MapaPage() {
           <p className="muted small">Restaura lotação, ruído e bloqueios do cenário original.</p>
           <button className="btn btn-sm" onClick={resetar}>↺ Resetar cenário</button>
           <p className="muted small">{mapa.evento.descricao}</p>
+          <div className="row wrap">
+            <a className="btn btn-sm btn-ghost" href={`#/organizador?evento=${ev}`}>📊 Painel do organizador</a>
+            <a className="btn btn-sm btn-ghost" href={`#/validacao?evento=${ev}`}>🧪 Teste com usuários</a>
+            <a className="btn btn-sm btn-ghost" href={`#/planta?evento=${ev}`}>🖨️ Planta impressa</a>
+          </div>
         </details>
       </aside>
 
@@ -367,7 +402,7 @@ function Resultado({ res, modo, cor, decisao, setDecisao, preview, setPreview, i
         ) : (
           <>
             <button className="btn btn-pri" onClick={() => setDecisao('seguir')}>Vou seguir esta rota</button>
-            <button className="btn btn-ghost" onClick={() => (modo === 'saida' ? setPreview(res.alternativas?.[0]?.codigo || null) : setModo('comparar'))}>Ver outras opções</button>
+            <button className="btn btn-ghost" onClick={() => { setDecisao('outra'); if (modo === 'saida') setPreview(res.alternativas?.[0]?.codigo || null); else setModo('comparar'); }}>Ver outras opções</button>
           </>
         )}
       </div>

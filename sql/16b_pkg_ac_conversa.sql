@@ -7,7 +7,7 @@
 -- =====================================================================
 CREATE OR REPLACE PACKAGE ac_conversa AUTHID DEFINER AS
   FUNCTION responder_json(p_evento VARCHAR2, p_texto VARCHAR2, p_origem VARCHAR2 DEFAULT NULL,
-                          p_perfil VARCHAR2 DEFAULT NULL) RETURN CLOB;
+                          p_perfil VARCHAR2 DEFAULT NULL, p_registrar VARCHAR2 DEFAULT 'S') RETURN CLOB;
   PROCEDURE api_responder(p_evento VARCHAR2, p_body CLOB);
 END ac_conversa;
 /
@@ -179,8 +179,44 @@ CREATE OR REPLACE PACKAGE BODY ac_conversa AS
     RETURN l_txt;
   END;
 
+  -- registro da conversa (transação autônoma: não interfere na resposta; sem dados pessoais)
+  PROCEDURE registrar(p_ev NUMBER, p_texto VARCHAR2, p_int VARCHAR2, p_faq VARCHAR2, p_metodo VARCHAR2,
+                      p_conf NUMBER, p_entendeu VARCHAR2) IS
+    PRAGMA AUTONOMOUS_TRANSACTION;
+  BEGIN
+    INSERT INTO ac_conversa_log (evento_id, texto, intencao, faq_chave, metodo, confianca, entendeu)
+    VALUES (p_ev, SUBSTR(p_texto, 1, 1000), p_int, p_faq, p_metodo, p_conf, p_entendeu);
+    COMMIT;
+  EXCEPTION WHEN OTHERS THEN ROLLBACK;
+  END;
+
+  -- FAQ por palavra explícita (vocabulário do domínio; complementa o vetor)
+  FUNCTION faq_por_palavra(p_norm VARCHAR2) RETURN VARCHAR2 IS
+  BEGIN
+    RETURN CASE
+      WHEN REGEXP_LIKE(p_norm, '(wi-?fi|internet|senha da rede)') THEN 'WIFI'
+      WHEN REGEXP_LIKE(p_norm, '(libras|interprete|legenda|surd)') THEN 'LIBRAS'
+      WHEN REGEXP_LIKE(p_norm, '(cao.guia|cachorro|cao de (assistencia|servico))') THEN 'CAO_GUIA'
+      WHEN REGEXP_LIKE(p_norm, '(fumar|fumodromo|cigarro|vape)') THEN 'FUMAR'
+      WHEN REGEXP_LIKE(p_norm, '(estacion|[^a-z]carro[^a-z]|[^a-z]uber[^a-z]|[^a-z]metro[^a-z]|onibus|[^a-z]taxi)') THEN 'ESTACIONAMENTO'
+      WHEN REGEXP_LIKE(p_norm, '(carregar|carrego|bateria|tomada|descarreg)') THEN 'CARREGAR_CELULAR'
+      WHEN REGEXP_LIKE(p_norm, '(achados|perdi (a |o )?(minha|meu) (carteira|celular|documento|mochila|bolsa|oculos|chave)|objetos? perdidos?)') THEN 'ACHADOS_PERDIDOS'
+      WHEN REGEXP_LIKE(p_norm, '(emprest.*cadeira|cadeira.*emprest|alug.*cadeira)') THEN 'CADEIRA_EMPRESTIMO'
+      WHEN REGEXP_LIKE(p_norm, '(abafador|protetor auricular|tampao de ouvido)') THEN 'ABAFADOR'
+      WHEN REGEXP_LIKE(p_norm, '(credencial|cracha|ingresso|pulseira de acesso)') THEN 'CREDENCIAL'
+      WHEN REGEXP_LIKE(p_norm, '(organizacao|atendente|falar com alguem|staff)') THEN 'FALAR_EQUIPE'
+      WHEN REGEXP_LIKE(p_norm, '(rastre|meus dados|privacidade|lgpd|localizacao fica salva)') THEN 'PRIVACIDADE'
+      WHEN REGEXP_LIKE(p_norm, '(decide (o caminho )?por mim|quem decide|escolhe por mim|obrigad[oa] a seguir)') THEN 'QUEM_DECIDE'
+      WHEN REGEXP_LIKE(p_norm, '(quais perfis|tipos de perfil|perfis existem|qual perfil)') THEN 'PERFIS'
+      WHEN REGEXP_LIKE(p_norm, '(report|avis|inform).{0,25}(bloquead|lotad|cheio|barulho|obstaculo|fechad)') THEN 'COMO_REPORTAR'
+      WHEN REGEXP_LIKE(p_norm, '([^a-z]qr|codigo do totem)') THEN 'QR'
+      WHEN REGEXP_LIKE(p_norm, '(como (voce|vc|o app|isso) (calcula|funciona|sabe)|inteligencia artificial|[^a-z]ia[^a-z]|como a rota)') THEN 'COMO_FUNCIONA'
+      WHEN REGEXP_LIKE(p_norm, '(agua|bebedouro|[^a-z]sede)') THEN 'AGUA'
+    END;
+  END;
+
   FUNCTION responder_json(p_evento VARCHAR2, p_texto VARCHAR2, p_origem VARCHAR2 DEFAULT NULL,
-                          p_perfil VARCHAR2 DEFAULT NULL) RETURN CLOB IS
+                          p_perfil VARCHAR2 DEFAULT NULL, p_registrar VARCHAR2 DEFAULT 'S') RETURN CLOB IS
     l_ev      NUMBER;
     l_evnome  ac_evento.nome%TYPE;
     l_evlocal ac_evento.local%TYPE;
@@ -206,6 +242,13 @@ CREATE OR REPLACE PACKAGE BODY ac_conversa AS
     l_n       NUMBER;
     l_tmp     VARCHAR2(4000);
     l_saida   JSON_OBJECT_T;
+    l_faq_ch  ac_faq.chave%TYPE;
+    l_faq_d   NUMBER;
+    l_faq_q   VARCHAR2(400);
+    l_faq_resp ac_faq.resposta%TYPE;
+    l_faq_dest ac_faq.destino_ponto%TYPE;
+    l_evac_n  NUMBER;
+    l_evac_msg ac_evacuacao.mensagem%TYPE;
 
     PROCEDURE sugerir(p1 VARCHAR2, p2 VARCHAR2 DEFAULT NULL, p3 VARCHAR2 DEFAULT NULL) IS
     BEGIN
@@ -244,15 +287,21 @@ CREATE OR REPLACE PACKAGE BODY ac_conversa AS
     l_perfil := NVL(l_perfil_sug, l_perfil);
     l_lugar := lugar_citado(l_ev, l_norm);
 
+    SELECT VECTOR_EMBEDDING(doc_model USING p_texto AS data) INTO l_vec FROM dual;
+
+    -- 1a) criança perdida: regra de segurança, orienta e oferece a brigada
+    IF REGEXP_LIKE(l_norm, '(perdi (o |a )?(meu|minha) (filh|crianca|sobrinh|net|irma|irmao)|crianca (perdida|sumiu|desaparec|sozinha)|nao (acho|encontro) (o |a )?(meu|minha) (filh|crianca)|(filh|crianca|sobrinh)[a-z]* (sumiu|desapareceu|se perdeu))') THEN
+      l_faq_ch := 'CRIANCA_PERDIDA'; l_metodo := 'REGRA_SEGURANCA';
+    END IF;
+
     -- 1) segurança primeiro
-    IF l_ass.has('necessidade') AND l_ass.get_object('necessidade').get_string('metodo') = 'REGRA_SEGURANCA' THEN
+    IF l_faq_ch IS NULL AND l_ass.has('necessidade') AND l_ass.get_object('necessidade').get_string('metodo') = 'REGRA_SEGURANCA' THEN
       l_int := l_ass.get_object('necessidade').get_string('codigo');
       l_metodo := 'REGRA_SEGURANCA';
     END IF;
 
     -- 2) tipo de pergunta/necessidade por AI Vector Search (k-NN, voto ponderado)
-    IF l_int IS NULL THEN
-      SELECT VECTOR_EMBEDDING(doc_model USING p_texto AS data) INTO l_vec FROM dual;
+    IF l_int IS NULL AND l_faq_ch IS NULL THEN
       BEGIN
         SELECT intencao, dmin INTO l_int, l_d FROM (
           SELECT intencao, MIN(d) dmin, SUM(1 - d) score
@@ -269,6 +318,34 @@ CREATE OR REPLACE PACKAGE BODY ac_conversa AS
            ORDER BY VECTOR_DISTANCE(embedding, l_vec, COSINE) FETCH FIRST 1 ROWS ONLY);
       EXCEPTION WHEN NO_DATA_FOUND THEN l_int := NULL;
       END;
+    END IF;
+
+    -- 2b) FAQ: pergunta frequente mais parecida (vetor) ou palavra explícita
+    IF l_faq_ch IS NULL AND NVL(l_metodo, '-') <> 'REGRA_SEGURANCA' THEN
+      BEGIN
+        SELECT f.chave, x.d, x.pergunta INTO l_faq_ch, l_faq_d, l_faq_q FROM (
+          SELECT p.faq_id, p.pergunta, VECTOR_DISTANCE(p.embedding, l_vec, COSINE) d
+            FROM ac_faq_pergunta p JOIN ac_faq f ON f.id = p.faq_id
+           WHERE f.evento_codigo IS NULL OR f.evento_codigo = UPPER(TRIM(p_evento))
+           ORDER BY d FETCH FIRST 1 ROWS ONLY) x
+          JOIN ac_faq f ON f.id = x.faq_id;
+        IF l_faq_d < 0.40 AND (l_int IS NULL OR l_faq_d <= l_d) THEN
+          l_metodo := 'VECTOR_SEARCH'; l_conf := ROUND(1 - l_faq_d, 2); l_frase := l_faq_q;
+        ELSE
+          l_faq_ch := NULL;
+        END IF;
+      EXCEPTION WHEN NO_DATA_FOUND THEN l_faq_ch := NULL;
+      END;
+      IF faq_por_palavra(l_norm) IS NOT NULL AND NVL(l_faq_ch, '-') <> faq_por_palavra(l_norm) THEN
+        l_faq_ch := faq_por_palavra(l_norm); l_metodo := 'PALAVRA_CHAVE'; l_conf := NULL; l_frase := NULL;
+      ELSIF l_faq_ch IS NOT NULL AND l_conf < 0.80 AND faq_por_palavra(l_norm) IS NULL  -- palavra confirma o FAQ: mantém
+            AND (l_lugar IS NOT NULL OR REGEXP_LIKE(l_norm, '(acessib|degrau|rampa|escada|lotad|cheio|programac|onde |cade |caminho|saida)')) THEN
+        l_faq_ch := NULL; l_metodo := NULL; l_conf := NULL; l_frase := NULL;  -- volta para as intenções
+        IF l_int IS NOT NULL THEN l_metodo := 'VECTOR_SEARCH'; l_conf := ROUND(1 - l_d, 2); END IF;
+      END IF;
+    END IF;
+    IF l_faq_ch IS NOT NULL THEN
+      l_int := 'FAQ';
     END IF;
 
     -- emergência por similaridade fraca vira "quais são as saídas" (informa, não dispara alarme)
@@ -299,12 +376,17 @@ CREATE OR REPLACE PACKAGE BODY ac_conversa AS
     END IF;
 
     -- desempate por intenção explícita no texto (o vetor erra perguntas curtas e parecidas)
-    IF NVL(l_metodo, '-') <> 'REGRA_SEGURANCA' THEN
+    IF NVL(l_metodo, '-') <> 'REGRA_SEGURANCA' AND NVL(l_int, '-') <> 'FAQ' THEN
       IF REGEXP_LIKE(l_norm, '(obrigad|valeu|agradec)') AND LENGTH(l_norm) < 40 THEN
         l_int := 'Q_OBRIGADO'; l_metodo := 'PALAVRA_CHAVE'; l_conf := NULL; l_frase := NULL;
-      ELSIF REGEXP_LIKE(l_norm, '(acontecendo|programac|agenda|que horas|horario|comeca|termina)') AND l_int <> 'Q_PROGRAMACAO' THEN
+      ELSIF REGEXP_LIKE(l_norm, '(cheio|lotad|vazio|muita gente|tumult|movimentad)') AND l_int NOT IN ('Q_LOTACAO', 'CRISE_SENSORIAL') THEN
+        l_int := 'Q_LOTACAO'; l_metodo := 'PALAVRA_CHAVE'; l_conf := NULL; l_frase := NULL;
+      ELSIF l_lugar IS NOT NULL AND REGEXP_LIKE(l_norm, '(onde |cade |como chego|caminho|achar|encontrar|localiza|me leva|how do i get|where is|donde)')
+            AND l_int IN ('Q_PROGRAMACAO', 'Q_SOBRE_LUGAR', 'PALESTRA', 'Q_EVENTO', 'Q_O_QUE_TEM') THEN
+        l_int := 'Q_ONDE_FICA'; l_metodo := 'PALAVRA_CHAVE'; l_conf := NULL; l_frase := NULL;
+      ELSIF REGEXP_LIKE(l_norm, '(acontecendo|programac|agenda|que horas|horario|comeca|termina|quando e |quando vai|happening|schedule)') AND l_int <> 'Q_PROGRAMACAO' THEN
         l_int := 'Q_PROGRAMACAO'; l_metodo := 'PALAVRA_CHAVE'; l_conf := NULL; l_frase := NULL;
-      ELSIF l_lugar IS NOT NULL AND REGEXP_LIKE(l_norm, '(me fal|fale sobre|o que e |o que tem n|o que acontece|sobre o |sobre a |como e )')
+      ELSIF l_lugar IS NOT NULL AND REGEXP_LIKE(l_norm, '(me fal|fale sobre|explica|o que e |o que tem n|o que acontece|o que rola|sobre o |sobre a |como e )')
             AND l_int NOT IN ('Q_SOBRE_LUGAR', 'Q_PROGRAMACAO') THEN
         l_int := 'Q_SOBRE_LUGAR'; l_metodo := 'PALAVRA_CHAVE'; l_conf := NULL; l_frase := NULL;
       -- tema específico ganha de resposta genérica ("tem rampa NO EVENTO?" é sobre rampa, não sobre o evento)
@@ -329,6 +411,7 @@ CREATE OR REPLACE PACKAGE BODY ac_conversa AS
 
     -- ajustes: "o que tem" + lugar citado = sobre o lugar; necessidade de lugar + "onde" = onde fica
     IF l_int = 'Q_O_QUE_TEM' AND l_lugar IS NOT NULL THEN l_int := 'Q_SOBRE_LUGAR'; END IF;
+    IF l_int = 'FAQ' THEN l_lugar := NULL; END IF;
     IF l_int IN ('Q_ONDE_FICA', 'Q_SOBRE_LUGAR') AND l_lugar IS NULL THEN
       l_lugar := CASE WHEN l_ass.has('destino') THEN l_ass.get_object('destino').get_string('codigo') END;
       IF l_lugar IS NULL THEN l_lugar := lugar_por_vetor(l_ev, p_texto); END IF;
@@ -337,6 +420,21 @@ CREATE OR REPLACE PACKAGE BODY ac_conversa AS
 
     -- 4) resposta com dados do banco
     CASE
+      WHEN l_int = 'FAQ' THEN
+        SELECT resposta, destino_ponto INTO l_faq_resp, l_faq_dest FROM (
+          SELECT resposta, destino_ponto FROM ac_faq
+           WHERE chave = l_faq_ch AND (evento_codigo IS NULL OR evento_codigo = UPPER(TRIM(p_evento)))
+           ORDER BY evento_codigo NULLS LAST FETCH FIRST 1 ROWS ONLY);
+        l_resp := l_faq_resp;
+        IF l_faq_dest IS NOT NULL AND nome_ponto(l_ev, l_faq_dest) IS NOT NULL THEN
+          l_lugar := l_faq_dest;
+          IF l_faq_ch <> 'CRIANCA_PERDIDA' THEN
+            l_resp := l_resp || NL || descrever_lugar(p_evento, l_ev, l_faq_dest, l_origem, l_perfil);
+          END IF;
+          acao('ROTA', l_faq_dest, 'Traçar rota até ' || nome_ponto(l_ev, l_faq_dest));
+        END IF;
+        sugerir('O que tem no evento?', 'Onde está mais tranquilo agora?');
+
       WHEN l_int = 'Q_SAUDACAO' THEN
         l_resp := 'Oi! Sou a assistente do ' || l_evnome || '. Posso te contar o que tem no evento, onde fica cada lugar, '
                || 'o que está acontecendo agora, onde está cheio ou tranquilo e qual o melhor caminho pra você — '
@@ -520,7 +618,22 @@ CREATE OR REPLACE PACKAGE BODY ac_conversa AS
       l_resp := l_resp || NL || '(Sugeri o perfil ' || nome_perfil(l_perfil_sug) || ' — pode trocar se não for você.)';
     END IF;
 
+    -- evacuação em andamento sobrepõe qualquer resposta
+    SELECT COUNT(*), MAX(mensagem) INTO l_evac_n, l_evac_msg FROM ac_evacuacao WHERE evento_id = l_ev AND encerrada_em IS NULL;
+    IF l_evac_n > 0 THEN
+      l_resp := '⚠️ EVACUAÇÃO EM ANDAMENTO' || CASE WHEN l_evac_msg IS NOT NULL THEN ': ' || l_evac_msg END
+             || NL || 'Siga para a saída indicada no mapa e as orientações da brigada.' || NL || NL || l_resp;
+      acao('SAIDA', NULL, 'Ver saída mais segura', TRUE);
+    END IF;
+
+    IF NVL(p_registrar, 'S') = 'S' THEN
+      registrar(l_ev, p_texto, l_int, l_faq_ch, l_metodo, l_conf, CASE WHEN l_int IS NULL THEN 'N' ELSE 'S' END);
+    END IF;
+
     o.put('intencao', l_int);
+    IF l_faq_ch IS NOT NULL THEN
+      j := JSON_OBJECT_T(); j.put('chave', l_faq_ch); o.put('faq', j);
+    END IF;
     IF l_metodo IS NOT NULL THEN
       j := JSON_OBJECT_T();
       j.put('metodo', l_metodo);
@@ -552,7 +665,9 @@ CREATE OR REPLACE PACKAGE BODY ac_conversa AS
       j := JSON_OBJECT_T.parse(NVL(p_body, '{}'));
     EXCEPTION WHEN OTHERS THEN raise_application_error(-20400, 'Corpo JSON inválido');
     END;
-    l_res := responder_json(p_evento, j.get_string('texto'), j.get_string('origem'), j.get_string('perfil'));
+    l_res := responder_json(p_evento, j.get_string('texto'), j.get_string('origem'), j.get_string('perfil'),
+                            CASE WHEN j.has('registrar') AND j.get('registrar').is_boolean
+                                  AND NOT j.get_boolean('registrar') THEN 'N' ELSE 'S' END);
     OWA_UTIL.mime_header('application/json', FALSE, 'UTF-8');
     HTP.p('Cache-Control: no-store');
     OWA_UTIL.http_header_close;

@@ -16,6 +16,12 @@ perfil de deslocamento — cadeirante, mobilidade reduzida, neurodivergente/sens
   destino e rota. A interpretação é feita **dentro do Oracle** com modelo **ONNX de embedding** + **AI Vector Search**.
 - **Princípio de design:** a IA **informa e explica**; **quem decide é a pessoa** (botões "Vou seguir esta rota" /
   "Ver outras opções", perfil sugerido sempre editável).
+- **Perguntas frequentes do evento** (Wi-Fi, achados e perdidos, Libras, cão-guia, criança perdida, "você decide por mim?",
+  "meus dados ficam salvos?") respondidas por Vector Search sobre a base de FAQ do organizador.
+- **Painel do organizador**: lotação ao vivo, reportes, **Acionar evacuação** (todos os celulares entram no modo saída segura),
+  % de pessoas que seguiram a sugestão e **"Ensinar a assistente"** (curadoria humana das perguntas não entendidas).
+- **Acessibilidade do próprio app**: alto contraste, letra maior, linguagem simples, leitura automática em voz alta, menos movimento.
+- **Kit de validação com usuários**: termo LGPD, tarefas cronometradas com e sem o app, questionário e coleta das frases reais.
 - **Modo offline**: se a rede não alcança o Oracle, o site continua funcionando com uma cópia do mapa e um motor
   local idêntico ao do banco (validado em 158 consultas).
 
@@ -27,7 +33,7 @@ Cenários de demonstração (dados **sintéticos**, plantas ilustrativas): `NEXT
 |---|---|
 | Banco de dados | **Oracle Autonomous AI Database 26ai** (OCI, região São Paulo) |
 | IA in-database | **ONNX Runtime no Oracle** (`DBMS_VECTOR.LOAD_ONNX_MODEL_CLOUD`), **AI Vector Search** (`VECTOR`, `VECTOR_EMBEDDING`, `VECTOR_DISTANCE`) |
-| Lógica de negócio | **PL/SQL** (packages `AC_ROTAS`, `AC_ASSISTENTE`), SQL/JSON (`JSON_OBJECT`, `JSON_ARRAYAGG`, `JSON_OBJECT_T`) |
+| Lógica de negócio | **PL/SQL** (packages `AC_ROTAS`, `AC_ASSISTENTE`, `AC_CONVERSA`, `AC_OPERACAO`), SQL/JSON (`JSON_OBJECT`, `JSON_ARRAYAGG`, `JSON_OBJECT_T`) |
 | API | **Oracle REST Data Services (ORDS)** embutido no Autonomous — módulo `rotas.v1` |
 | Front-end | **React 19** + **Vite 8**, **three.js** / **@react-three/fiber** / **@react-three/drei** (mapa 3D), `qrcode` |
 | Voz | Web Speech API do navegador (reconhecimento e síntese pt-BR) |
@@ -76,6 +82,14 @@ Cenários de demonstração (dados **sintéticos**, plantas ilustrativas): `NEXT
 | GET | `eventos/{evento}/saida?perfil=&origem=` | Saída mais segura + alternativas + saídas indisponíveis |
 | POST | `eventos/{evento}/conversa` | `{"texto","origem","perfil"}` → resposta em linguagem natural com dados do banco, ação sugerida (rota/saída), explicação (método, confiança) |
 | POST | `eventos/{evento}/assistente` | `{"texto": "..."}` → necessidade, perfil, origem, destino, confiança, frase parecida, método |
+| GET | `eventos/{evento}/painel` | Painel do organizador (KPIs, corredores, reportes, decisões, perguntas para revisar, resultados do teste) |
+| POST | `eventos/{evento}/evacuacao` | `{"ativa":true\|false,"mensagem","pin"}` — aciona/encerra evacuação (exige PIN) |
+| POST | `eventos/{evento}/decisoes` | `{"perfil","origem","destino","modo","caminho","decisao":"SEGUIU\|OUTRA_OPCAO\|TROCOU_PERFIL"}` |
+| POST | `eventos/{evento}/treino/ensinar` | `{"log_id"\|"texto","rotulo","pin"}` — frase vira exemplo vetorizado (intenção ou FAQ) |
+| GET | `rotulos` | Intenções e FAQs disponíveis para ensinar |
+| GET | `eventos/{evento}/validacao/tarefas` | Tarefas do teste com usuários |
+| POST | `eventos/{evento}/validacao/participantes` | `{"apelido","perfil","faixa_etaria","consentimento":true}` |
+| POST | `eventos/{evento}/validacao/execucoes` | `{"participante_id","tarefa","condicao":"SEM_APP\|COM_APP","segundos","concluiu","confianca","facilidade","frase"}` |
 | POST | `eventos/{evento}/reportes` | `{"ponto","tipo":"CHEIO\|BARULHO\|BLOQUEIO\|LIBERADO","usuario"}` |
 | POST | `eventos/{evento}/reset` | Restaura o cenário de demonstração |
 
@@ -89,7 +103,19 @@ Cenários de demonstração (dados **sintéticos**, plantas ilustrativas): `NEXT
 | Carga | `DBMS_VECTOR.LOAD_ONNX_MODEL_CLOUD` (download direto do Object Storage pelo banco) |
 | Uso | `VECTOR_EMBEDDING(doc_model USING :texto AS data)` + `VECTOR_DISTANCE(..., COSINE)` |
 
-**Avaliação do assistente** (evento NEXT26, 20 frases *não usadas* no ajuste — `db/avaliacao/assistente_holdout.sql`):
+**Avaliação do chat** (`AC_CONVERSA`, 60 perguntas escritas antes do treino — `db/avaliacao/conversa_holdout.json`,
+rodar com `node db/avaliacao/avaliar_conversa.mjs <rodada>`):
+
+| Rodada | Perguntas sobre o evento | Necessidades | FAQ | Total | Alarmes falsos |
+|---|---|---|---|---|---|
+| Antes do treino | 50% | 83% | 0% | **35%** | 1 |
+| Treino (FAQ + ~110 frases novas) | 59% | 92% | 92% | **80%** | 0 |
+| Ajustes de desempate* | 82% | 100% | 100% | **93%** | 0 |
+
+\*Ajustes feitos olhando os erros da rodada anterior; o conjunto foi escrito pelo mesmo time. Medida independente:
+frases de usuários reais coletadas no kit de validação (`docs/roteiro_validacao.md`).
+
+**Avaliação do assistente de rotas** (evento NEXT26, 20 frases *não usadas* no ajuste — `db/avaliacao/assistente_holdout.sql`):
 
 | Campo | Acerto (1ª medição) | Após ampliar vocabulário de segurança* |
 |---|---|---|
@@ -112,6 +138,11 @@ Cenários de demonstração (dados **sintéticos**, plantas ilustrativas): `NEXT
 | `AC_REPORTE` | reportes do público/equipe (crowdsourcing) |
 | `AC_INTENCAO` / `AC_INTENCAO_FRASE` | tipos de pergunta, necessidades e perfis + frases de exemplo em PT com `embedding VECTOR(384)` |
 | `AC_PROGRAMACAO` | agenda por lugar (horário, ruído previsto) — ilustrativa |
+| `AC_FAQ` / `AC_FAQ_PERGUNTA` | perguntas frequentes (globais ou do evento) com perguntas-exemplo vetorizadas |
+| `AC_CONVERSA_LOG` | perguntas feitas ao chat, sem identificação, para curadoria e métricas |
+| `AC_DECISAO` | sugestão da IA × escolha da pessoa |
+| `AC_EVACUACAO` | evacuações acionadas pelo organizador |
+| `AC_VAL_TAREFA` / `AC_VAL_PARTICIPANTE` / `AC_VAL_EXECUCAO` | teste com usuários (consentimento obrigatório) |
 | `AC_ROTA` / `AC_ROTA_TRECHO` | legado (POC inicial em APEX, evento 1) |
 
 ## 5. Instalação e execução
@@ -133,7 +164,10 @@ node db/run-sql.mjs sql/15a_onnx_modelo.sql       # carrega o modelo ONNX no ban
 node db/run-sql.mjs sql/15b_vector_search.sql     # frases/lugares vetorizados  (rodar de novo após re-seed)
 node db/run-sql.mjs sql/15c_pkg_ac_assistente.sql # assistente semântico + endpoint
 node db/run-sql.mjs sql/16a_conversa_modelo.sql   # base de conhecimento (descrições, programação)
+node db/run-sql.mjs sql/15d_treino_frases.sql     # treino: mais exemplos por intenção (depois do 15b)
+node db/run-sql.mjs sql/17a_operacao_modelo.sql   # FAQ, log, decisões, evacuação, validação
 node db/run-sql.mjs sql/16b_pkg_ac_conversa.sql   # chat do evento (RAG in-database) + endpoint
+node db/run-sql.mjs sql/17b_pkg_ac_operacao.sql   # painel, evacuação, decisões, validação, ensinar + endpoints
 node db/snapshot.mjs                              # cópia offline + prova de paridade motor local × Oracle
 ```
 
@@ -147,6 +181,9 @@ npm install
 npm run dev      # http://localhost:5173
 npm run build    # site estático em web/dist
 ```
+
+Telas: `#/app` (mapa + chat) · `#/organizador` (painel, evacuação, ensinar IA; PIN de demonstração `2026`) ·
+`#/validacao` (teste com usuários) · `#/planta` (planta imprimível, `&aqui=ORACLE` marca "você está aqui").
 
 Rotas úteis: `#/` (apresentação) · `#/app?evento=NEXT26&origem=ORACLE&destino=ACOLH&modo=comparar` · `#/app?evento=NEXT26&origem=ORACLE&modo=saida`.
 
@@ -164,7 +201,8 @@ Rotas úteis: `#/` (apresentação) · `#/app?evento=NEXT26&origem=ORACLE&destin
 - O modelo de embedding é treinado em **inglês**; em português a busca semântica acerta menos (ver avaliação) e a
   solução depende de busca híbrida (regras de segurança + palavras-chave).
 - Embeddings de `AC_PONTO` são gerados por script: após recarregar um cenário é preciso rodar `15b` de novo.
-- Endpoints de escrita (`reportes`, `reset`) são **públicos** (demo com dados sintéticos). REST-Enabled SQL está
+- Endpoints de escrita (`reportes`, `reset`, `decisoes`, validação) são **públicos**; evacuação e treino exigem um PIN
+  simples de demonstração, não uma autenticação real. REST-Enabled SQL está
   habilitado no schema para administração.
 - Ruído/lotação vêm de **reportes**; não há sensores. Reportes não decaem com o tempo.
 - Plantas são **ilustrativas**; digitalização automática de planta (OCI Vision) ainda não implementada.

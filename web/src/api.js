@@ -78,6 +78,15 @@ export const api = {
   // assistente semântico (ONNX + Vector Search no Oracle); offline = null -> front usa regras locais
   assistente: (ev, texto) => comFallback(() => req(`/eventos/${ev}/assistente`, post({ texto })), async () => null),
   conversa: (ev, body) => comFallback(() => req(`/eventos/${ev}/conversa`, post(body)), async () => null),
+  // operação / validação / treino (só online)
+  painel: ev => req(`/eventos/${ev}/painel`),
+  rotulos: () => req('/rotulos'),
+  tarefas: ev => req(`/eventos/${ev}/validacao/tarefas`),
+  participante: (ev, body) => req(`/eventos/${ev}/validacao/participantes`, post(body)),
+  execucao: (ev, body) => req(`/eventos/${ev}/validacao/execucoes`, post(body)),
+  evacuacao: (ev, body) => req(`/eventos/${ev}/evacuacao`, post(body)),
+  ensinar: (ev, body) => req(`/eventos/${ev}/treino/ensinar`, post(body)),
+  decisao: (ev, body) => (offline ? Promise.resolve(null) : req(`/eventos/${ev}/decisoes`, post(body)).catch(() => null)),
   reset: ev => comFallback(() => req(`/eventos/${ev}/reset`, { method: 'POST' }), async () => (await motor(ev)).reset()),
 };
 

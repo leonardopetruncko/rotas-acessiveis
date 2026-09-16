@@ -339,6 +339,8 @@ CREATE OR REPLACE PACKAGE BODY ac_rotas AS
                            JOIN ac_ponto pa ON pa.id = t.ponto_a
                            JOIN ac_ponto pb ON pb.id = t.ponto_b
                           WHERE t.evento_id = e.id), '[]') FORMAT JSON,
+      'evacuacao' VALUE (SELECT JSON_OBJECT('ativa' VALUE CASE WHEN COUNT(*) > 0 THEN 'S' ELSE 'N' END, 'mensagem' VALUE MAX(mensagem))
+                           FROM ac_evacuacao WHERE evento_id = e.id AND encerrada_em IS NULL),
       'programacao' VALUE NVL((SELECT JSON_ARRAYAGG(JSON_OBJECT('ponto' VALUE ponto, 'titulo' VALUE titulo,
                                 'inicio' VALUE inicio, 'fim' VALUE fim, 'ruido_prev' VALUE ruido_prev)
                               ORDER BY inicio, id RETURNING CLOB)

@@ -105,7 +105,7 @@ CREATE OR REPLACE PACKAGE BODY ac_assistente AS
     -- 3) guarda-corpo de segurança (regra explícita > similaridade)
     IF REGEXP_LIKE(l_norm, '(fogo|fumaca|incendio|queimad|evacu|explos|desab|teto|caindo|tiroteio|pisote|alarme|choque eletrico)') THEN
       l_int := 'EMERGENCIA'; l_metodo := 'REGRA_SEGURANCA';
-    ELSIF REGEXP_LIKE(l_norm, '(desmai|dor no peito|infart|convuls|sangr|machuc|passando mal|nao consigo respirar|caiu|bateu a cabeca|enjoad|vista escur|tontur)') THEN
+    ELSIF REGEXP_LIKE(l_norm, '(desmai|dor no peito|infart|convuls|sangr|machuc|passando mal|nao consigo respirar|falta de ar|sem ar|caiu|bateu a cabeca|enjoad|vista escur|tontur)') THEN
       l_int := 'MAL_ESTAR'; l_metodo := 'REGRA_SEGURANCA';
     END IF;
 
