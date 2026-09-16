@@ -115,14 +115,14 @@ CREATE OR REPLACE PACKAGE BODY ac_rotas AS
     END;
   BEGIN
     b.origem := p_origem;
-    FOR p IN (SELECT id, bloqueado FROM ac_ponto WHERE evento_id = p_evento) LOOP
+    FOR p IN (SELECT id, bloqueado FROM ac_ponto WHERE evento_id = p_evento ORDER BY id) LOOP
       b.dist(p.id) := c_inf;
       l_vis(p.id)  := 0;
       l_bloq(p.id) := CASE p.bloqueado WHEN 'S' THEN 1 ELSE 0 END;
     END LOOP;
 
     FOR t IN (SELECT id, ponto_a, ponto_b, distancia, via, tem_escada, ruido, lotacao
-                FROM ac_trecho WHERE evento_id = p_evento AND bloqueado = 'N') LOOP
+                FROM ac_trecho WHERE evento_id = p_evento AND bloqueado = 'N' ORDER BY id) LOOP
       b.tr(t.id).distancia := t.distancia;
       b.tr(t.id).via       := t.via;
       b.tr(t.id).escada    := t.tem_escada;
@@ -316,7 +316,8 @@ CREATE OR REPLACE PACKAGE BODY ac_rotas AS
                                  'descricao' VALUE e.descricao, 'origem_padrao' VALUE e.origem_padrao),
       'perfis' VALUE NVL((SELECT JSON_ARRAYAGG(JSON_OBJECT('codigo' VALUE codigo, 'nome' VALUE nome,
                             'descricao' VALUE descricao, 'evita_escada' VALUE evita_escada,
-                            'velocidade_ms' VALUE velocidade_ms)
+                            'velocidade_ms' VALUE velocidade_ms,
+                            'peso_ruido' VALUE peso_ruido, 'peso_lotacao' VALUE peso_lotacao)
                           ORDER BY DECODE(codigo, 'PADRAO', 1, 'CADEIRANTE', 2, 'MOBILIDADE', 3, 4) RETURNING CLOB)
                           FROM ac_perfil), '[]') FORMAT JSON,
       'areas' VALUE NVL((SELECT JSON_ARRAYAGG(JSON_OBJECT('codigo' VALUE codigo, 'nome' VALUE nome, 'tipo' VALUE tipo,

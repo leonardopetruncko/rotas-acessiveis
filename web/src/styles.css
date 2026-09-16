@@ -111,6 +111,7 @@ button.chip:hover { border-color: var(--pri); }
 
 .mapa-topo { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 8px; align-items: center; pointer-events: none; }
 .mapa-topo > * { pointer-events: auto; }
+.badge-offline { padding: 8px 10px; border-radius: 12px; background: #2b1804; border: 1px solid #b45309; color: #fde68a; font-size: 13px; font-weight: 700; white-space: nowrap; }
 .marca { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; letter-spacing: -.02em; }
 .mapa-topo .marca { padding: 9px 12px; border-radius: 12px; background: rgba(13, 20, 38, .85); border: 1px solid var(--borda); backdrop-filter: blur(8px); }
 .sel-evento, .campo select {

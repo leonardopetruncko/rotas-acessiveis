@@ -55,5 +55,6 @@ npm run dev        # http://localhost:5173 (e o IP da rede, pra abrir no celular
 npm run build      # gera web/dist (estático: dá pra subir em Object Storage, Vercel, Netlify...)
 ```
 - `#/` Home (pitch) · `#/app?evento=NEXT26&origem=ORACLE&destino=ACOLH&perfil=CADEIRANTE&modo=rota|comparar|saida`
+- **Modo offline:** se o navegador não alcança o Oracle em 5s, o site usa `web/public/dados/*.json` e o motor local (`web/src/lib/motorLocal.js`, espelho do AC_ROTAS). Depois de mudar o banco: `node db/snapshot.mjs` (regera as cópias e confere que o motor local dá as mesmas respostas do Oracle).
 - QR dos totens: botão **▦ QR** no mapa → imprime um QR por lugar (`?evento=..&origem=..#/app`).
 - Roteiro NEXT26: origem `ORACLE` (ao lado do palco) → `ACOLH`. Emergência + reportar `SS` bloqueado → recalcula.

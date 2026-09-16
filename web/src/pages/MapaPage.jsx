@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Mapa3D from '../components/Mapa3D.jsx';
 import QrModal from '../components/QrModal.jsx';
-import { API_BASE, api, lerParams } from '../api.js';
+import { api, aoMudarModo, emModoOffline, lerParams } from '../api.js';
 import { interpretar } from '../lib/intencao.js';
 import { calar, falar, ouvir, podeFalar, podeOuvir } from '../lib/voz.js';
 import { NIVEL, NIVEL_TXT, PERFIS_UI, TIPO_UI, ehDestino } from '../lib/tema.js';
@@ -30,6 +30,8 @@ export default function MapaPage() {
   const [selecionado, setSelecionado] = useState(null);
   const [toast, setToast] = useState(null);
   const [qr, setQr] = useState(false);
+  const [offline, setOffline] = useState(emModoOffline());
+  useEffect(() => aoMudarModo(setOffline), []);
 
   const [pergunta, setPergunta] = useState('');
   const [resposta, setResposta] = useState(null);
@@ -65,7 +67,7 @@ export default function MapaPage() {
   const assin = assinatura(mapa);
   useEffect(() => {
     const id = setInterval(() => {
-      if (document.hidden) return;
+      if (document.hidden || emModoOffline()) return;
       api.mapa(ev).then(m => { if (assinatura(m) !== assin) setMapa(m); }).catch(() => {});
     }, 6000);
     return () => clearInterval(id);
@@ -168,20 +170,7 @@ export default function MapaPage() {
     return out;
   }, [res, modo, perfil, P, mapa, preview]);
 
-  if (erro) {
-    return (
-      <div className="tela-cheia">
-        <div className="big">📡</div>
-        <p style={{ maxWidth: 460 }}>{erro}</p>
-        <div className="row wrap" style={{ justifyContent: 'center' }}>
-          <button className="btn btn-pri" onClick={() => window.location.reload()}>Tentar de novo</button>
-          <a className="btn btn-ghost" href={`${API_BASE}/eventos`} target="_blank" rel="noreferrer">Testar conexão</a>
-          <a className="btn btn-ghost" href="#/">Voltar</a>
-        </div>
-        <small className="muted">“Testar conexão” deve abrir um texto com os eventos. Se não abrir, a sua rede está bloqueando o Oracle Cloud.</small>
-      </div>
-    );
-  }
+  if (erro) return <div className="tela-cheia"><p>😕 {erro}</p><a className="btn" href="#/">Voltar</a></div>;
   if (!mapa) return <div className="tela-cheia"><div className="loader" /><p>Carregando o mapa do evento…</p></div>;
 
   const perfilAtual = mapa.perfis.find(p => p.codigo === perfil);
@@ -200,6 +189,11 @@ export default function MapaPage() {
           <select className="sel-evento" value={ev} onChange={e => { setEv(e.target.value); setOrigem(null); setDestino(null); }} aria-label="Evento">
             {(eventos.length ? eventos : [{ codigo: ev, nome: mapa.evento.nome }]).map(e => <option key={e.codigo} value={e.codigo}>{e.nome}</option>)}
           </select>
+          {offline && (
+            <span className="badge-offline" title="Sem conexão com o Oracle: rotas calculadas no aparelho com a última cópia do mapa. Reportes ficam só neste aparelho.">
+              📴 Offline
+            </span>
+          )}
         </header>
 
         <div className="mapa-ferramentas">
