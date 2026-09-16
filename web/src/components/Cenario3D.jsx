@@ -1,6 +1,6 @@
 // Cenografia do evento: estandes abertos com mobília, palco/arena com plateia e efeitos "ao vivo",
 // praça de alimentação e sala de acolhimento. Tudo gerado a partir de ac_area + ac_programacao.
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -126,7 +126,7 @@ function Holofote({ p, alvo, cor = '#fde68a', ativo }) {
 }
 
 // pessoas na plateia (só quando há atividade)
-function Plateia({ posicoes, agitar }) {
+function Plateia({ posicoes, agitar, estatica }) {
   const ref = useRef();
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const cores = useMemo(() => {
@@ -139,8 +139,11 @@ function Plateia({ posicoes, agitar }) {
     cores.forEach((k, i) => ref.current.setColorAt(i, c.set(k)));
     if (ref.current.instanceColor) ref.current.instanceColor.needsUpdate = true;
   }, [cores]);
+  const posicionado = useRef(false);
+  useEffect(() => { posicionado.current = false; }, [posicoes]);
   useFrame(({ clock }) => {
-    if (!ref.current) return;
+    if (!ref.current || (estatica && posicionado.current)) return;
+    posicionado.current = true;
     const t = clock.elapsedTime;
     posicoes.forEach(([x, y, z], i) => {
       dummy.position.set(x, y + (agitar ? Math.abs(Math.sin(t * 4 + i)) * 0.03 : 0), z);
@@ -169,7 +172,7 @@ function grade(cols, linhas, x0, x1, z0, z1, y = 0) {
 }
 
 // ---------------------------------------------------------------- mobília por tipo (frente = +z)
-function MobiliaStand({ W, D, H, cor, aoVivo }) {
+function MobiliaStand({ W, D, H, cor, aoVivo, leve }) {
   const banquetas = useMemo(() => grade(3, 1, -W * 0.3, W * 0.3, D * 0.05, D * 0.15, 0.06), [W, D]);
   const visitas = useMemo(() => (aoVivo ? grade(5, 2, -W * 0.38, W * 0.38, D * 0.22, D * 0.44, 0.08) : grade(3, 1, -W * 0.3, W * 0.3, D * 0.34, D * 0.42, 0.08)), [W, D, aoVivo]);
   return (
@@ -179,12 +182,12 @@ function MobiliaStand({ W, D, H, cor, aoVivo }) {
       <Caixa p={[0, 0.145, D * 0.28]} s={[W * 0.57, 0.012, 0.11]} cor="#e2e8f0" />
       <Caixa p={[W / 2 - 0.1, H * 0.45, D / 2 - 0.1]} s={[0.07, H * 0.9, 0.03]} cor={cor} emissivo={0.6} />
       <Instancias posicoes={banquetas} cor="#cbd5e1" geometria={<cylinderGeometry args={[0.04, 0.04, 0.12, 12]} />} />
-      <Plateia posicoes={visitas} agitar={aoVivo} />
+      <Plateia posicoes={visitas} agitar={aoVivo && !leve} estatica={leve} />
     </group>
   );
 }
 
-function MobiliaPalco({ W, D, H, cor, aoVivo, arena, ruido }) {
+function MobiliaPalco({ W, D, H, cor, aoVivo, arena, ruido, leve }) {
   const palcoZ = -D / 2 + D * 0.18;
   const cadeiras = useMemo(() => (arena
     ? grade(4, 3, -W * 0.38, W * 0.38, -D * 0.05, D * 0.42, 0.06)
@@ -203,9 +206,9 @@ function MobiliaPalco({ W, D, H, cor, aoVivo, arena, ruido }) {
         : <Instancias posicoes={cadeiras} cor="#1e293b" geometria={<boxGeometry args={[0.07, 0.07, 0.07]} />} />}
       {arena && <Instancias posicoes={cadeiras.map(([x, , z]) => [x, 0.1, z - 0.02])} cor="#38bdf8" emissivo={aoVivo ? 1.2 : 0.3}
         geometria={<boxGeometry args={[0.08, 0.04, 0.005]} />} />}
-      <Plateia posicoes={pessoas} agitar={aoVivo && !arena} />
-      <Holofote p={[-W * 0.45, H * 1.15, -D / 2 + 0.12]} alvo={[0, 0.15, palcoZ]} ativo={aoVivo} />
-      <Holofote p={[W * 0.45, H * 1.15, -D / 2 + 0.12]} alvo={[0, 0.15, palcoZ]} cor="#a5f3fc" ativo={aoVivo} />
+      <Plateia posicoes={pessoas} agitar={aoVivo && !arena && !leve} estatica={leve} />
+      {!leve && <Holofote p={[-W * 0.45, H * 1.15, -D / 2 + 0.12]} alvo={[0, 0.15, palcoZ]} ativo={aoVivo} />}
+      {!leve && <Holofote p={[W * 0.45, H * 1.15, -D / 2 + 0.12]} alvo={[0, 0.15, palcoZ]} cor="#a5f3fc" ativo={aoVivo} />}
       {aoVivo && ruido >= 4 && <OndasSom raio={Math.max(W, D) * 0.6} intensidade={ruido} />}
     </group>
   );
@@ -250,7 +253,7 @@ function MobiliaAcolhimento({ W, D, H }) {
 }
 
 // ---------------------------------------------------------------- estande aberto
-export function Estande({ a, to3, P, rotulos, agenda, onPontoClick, calmo }) {
+export function Estande({ a, to3, P, rotulos, agenda, onPontoClick, calmo, lim = {} }) {
   const ui = TIPO_UI[a.tipo] || TIPO_UI.STAND;
   const cor = a.cor || ui.cor;
   const H = a.tipo === 'PALCO' ? 0.55 : a.tipo === 'ARENA' ? 0.45 : a.tipo === 'ACOLHIMENTO' ? 0.4 : 0.32;
@@ -287,13 +290,13 @@ export function Estande({ a, to3, P, rotulos, agenda, onPontoClick, calmo }) {
         <Caixa p={[-W / 2 + 0.015, H * 0.3, 0]} s={[0.03, H * 0.6, D]} cor={parede} emissivo={0.08} opacidade={0.9} />
         <Caixa p={[W / 2 - 0.015, H * 0.3, 0]} s={[0.03, H * 0.6, D]} cor={parede} emissivo={0.08} opacidade={0.9} />
         <Caixa p={[0, H + 0.02, -D / 2 + 0.015]} s={[W, 0.04, 0.05]} cor={cor} emissivo={0.9} />
-        {a.tipo === 'STAND' && <MobiliaStand W={W} D={D} H={H} cor={cor} aoVivo={!!aoVivo} />}
+        {a.tipo === 'STAND' && <MobiliaStand W={W} D={D} H={H} cor={cor} aoVivo={!!aoVivo} leve={!lim.plateiaAnimada} />}
         {(a.tipo === 'PALCO' || a.tipo === 'ARENA') && (
-          <MobiliaPalco W={W} D={D} H={H} cor={cor} aoVivo={!!aoVivo} arena={a.tipo === 'ARENA'} ruido={aoVivo?.ruido_prev || 3} />
+          <MobiliaPalco W={W} D={D} H={H} cor={cor} aoVivo={!!aoVivo} arena={a.tipo === 'ARENA'} ruido={aoVivo?.ruido_prev || 3} leve={!lim.holofotes} />
         )}
         {a.tipo === 'ALIMENTACAO' && <MobiliaAlimentacao W={W} D={D} aoVivo={!!aoVivo} />}
         {a.tipo === 'ACOLHIMENTO' && <MobiliaAcolhimento W={W} D={D} H={H} />}
-        {a.tipo === 'STAND' && !calmo && <Banner cor={cor} W={W} altura={H + 0.75} />}
+        {a.tipo === 'STAND' && !calmo && lim.banners && <Banner cor={cor} W={W} altura={H + 0.75} />}
       </group>
       {ponto && (
         <mesh position-y={H / 2}

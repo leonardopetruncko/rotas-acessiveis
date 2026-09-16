@@ -1,10 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Html, Line, OrbitControls } from '@react-three/drei';
+import { Html, Line, OrbitControls, PerformanceMonitor, Stats } from '@react-three/drei';
 import * as THREE from 'three';
 import { NIVEL, TIPO_UI, ehDestino } from '../lib/tema.js';
 import { Estande, TIPOS_ABERTOS, agendaPorPonto, agoraSP } from './Cenario3D.jsx';
 import { Agentes, Estrutura, Feixe, PulsoCritico, Setas } from './Vida3D.jsx';
+import { LIMITES, detectarQualidade } from '../lib/qualidade.js';
 
 const S = 0.01; // 1px da planta = 0.01 unidade de cena
 
@@ -349,7 +350,7 @@ function Rota({ pontos, cor, to3, idx = 0, total = 1, fraca = false, calmo = fal
 }
 
 // ---------------------------------------------------------------- cena
-function Cena({ mapa, rotas = [], origem, destino, camada, modo2D, autoRotate, interativo, onPontoClick, emergencia, selecionado, rotulos, calmo, agora, tour, seguir, onContagem }) {
+function Cena({ mapa, rotas = [], origem, destino, camada, modo2D, autoRotate, interativo, onPontoClick, emergencia, selecionado, rotulos, calmo, agora, tour, seguir, onContagem, lim = LIMITES.alta }) {
   const { W, H, to3, P } = useGeo(mapa);
   const hora = agora || agoraSP();
   const agenda = useMemo(() => agendaPorPonto(mapa.programacao, hora), [mapa.programacao, hora]);
@@ -371,7 +372,7 @@ function Cena({ mapa, rotas = [], origem, destino, camada, modo2D, autoRotate, i
   return (
     <>
       <color attach="background" args={[emergencia ? '#16060a' : '#070b16']} />
-      <fog attach="fog" args={[emergencia ? '#16060a' : '#070b16', 18, 40]} />
+      {lim.estrutura && <fog attach="fog" args={[emergencia ? '#16060a' : '#070b16', 18, 40]} />}
       <ambientLight intensity={0.55} />
       <hemisphereLight args={['#bcd3ff', '#0b1020', 0.6]} />
       <directionalLight position={[6, 12, 6]} intensity={1.3} />
@@ -385,13 +386,13 @@ function Cena({ mapa, rotas = [], origem, destino, camada, modo2D, autoRotate, i
         onStart={() => { /* usuário assumiu a câmera */ }} />
 
       <Piso W={W} H={H} />
-      {!calmo && <Estrutura W={W} H={H} emergencia={emergencia} />}
+      {!calmo && lim.estrutura && <Estrutura W={W} H={H} emergencia={emergencia} />}
       <Corredores mapa={mapa} P={P} to3={to3} camada={camada} />
       {!calmo && <PulsoCritico mapa={mapa} P={P} to3={to3} camada={camada} />}
       {mapa.areas.map(a => (TIPOS_ABERTOS.has(a.tipo)
-        ? <Estande key={a.codigo} a={a} to3={to3} P={P} rotulos={rotulos} agenda={agenda} onPontoClick={onPontoClick} calmo={calmo} />
+        ? <Estande key={a.codigo} a={a} to3={to3} P={P} rotulos={rotulos} agenda={agenda} onPontoClick={onPontoClick} calmo={calmo} lim={lim} />
         : <Area key={a.codigo} a={a} to3={to3} rotulos={rotulos} />))}
-      {!calmo && <Agentes mapa={mapa} P={P} to3={to3} emergencia={emergencia} onContagem={onContagem} />}
+      {!calmo && <Agentes mapa={mapa} P={P} to3={to3} emergencia={emergencia} onContagem={onContagem} maximo={lim.agentes} />}
       {saidas.map(p => { const [x, z] = to3(p.x, p.y); return <Feixe key={p.codigo} pos={[x, z]} cor="#22c55e" altura={2.6} largura={0.3} />; })}
       <Pontos mapa={mapa} to3={to3} onPontoClick={onPontoClick} emergencia={emergencia} selecionado={selecionado} />
 
@@ -406,12 +407,20 @@ function Cena({ mapa, rotas = [], origem, destino, camada, modo2D, autoRotate, i
   );
 }
 
-export default function Mapa3D({ className, ...props }) {
+export default function Mapa3D({ className, qualidade, onQualidade, ...props }) {
+  const [auto, setAuto] = useState(detectarQualidade);
+  const inicio = useRef(performance.now()); // ignora os engasgos da primeira carga (compilação de shaders)
+  const q = qualidade || auto;
+  const lim = LIMITES[q] || LIMITES.alta;
   return (
     <div className={`mapa3d ${className || ''}`}>
-      <Canvas dpr={[1, 1.75]} camera={{ position: [18, 26, 26], fov: 45, near: 0.1, far: 120 }}
+      <Canvas dpr={lim.dpr} camera={{ position: [18, 26, 26], fov: 45, near: 0.1, far: 120 }}
+        gl={{ antialias: q === 'alta', powerPreference: q === 'alta' ? 'high-performance' : 'low-power' }}
         onPointerMissed={() => props.onVazio?.()}>
-        <Cena interativo rotulos {...props} />
+        {/* FPS caindo de forma sustentada: rebaixa para o modo leve sozinho */}
+        <PerformanceMonitor flipflops={1} onDecline={() => { if (!qualidade && performance.now() - inicio.current > 8000) { setAuto('leve'); onQualidade?.('leve'); } }} />
+        <Cena interativo rotulos {...props} lim={lim} />
+        {/#.*[?&]fps=1/.test(window.location.hash) && <Stats />}
       </Canvas>
     </div>
   );

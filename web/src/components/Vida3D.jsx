@@ -48,7 +48,7 @@ function sorteio(seed) {
 }
 
 // ---------------------------------------------------------------- pessoas
-export function Agentes({ mapa, P, to3, emergencia, onContagem }) {
+export function Agentes({ mapa, P, to3, emergencia, onContagem, maximo = 420 }) {
   const ref = useRef();
   const grafo = useMemo(() => montarGrafo(mapa, P, to3), [mapa, P, to3]);
   const rnd = useMemo(() => sorteio(11), []);
@@ -57,13 +57,13 @@ export function Agentes({ mapa, P, to3, emergencia, onContagem }) {
     const lista = [];
     const r = sorteio(7);
     for (const e of grafo.arestas) {
-      const n = Math.round((e.m / 13) * Math.pow(e.lot, 1.3));
-      for (let i = 0; i < n && lista.length < 420; i++) {
+      const n = Math.max(0, Math.round((e.m / 13) * Math.pow(e.lot, 1.3) * (maximo / 420)));
+      for (let i = 0; i < n && lista.length < maximo; i++) {
         lista.push({ e: e.i, ida: r() > 0.5, t: r(), vel: 0.22 + r() * 0.2, off: (r() - 0.5) * 0.3, fase: r() * 6.28, pausa: 0, saiu: false, ultima: -1 });
       }
     }
     return lista;
-  }, [grafo]);
+  }, [grafo, maximo]);
 
   useLayoutEffect(() => {
     if (!ref.current) return;

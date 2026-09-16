@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 
 const CHAVE = 'rotas-a11y';
-export const PADRAO_A11Y = { contraste: false, fonteGrande: false, simples: false, lerAuto: false, semAnimacao: false };
+export const PADRAO_A11Y = { contraste: false, fonteGrande: false, simples: false, lerAuto: false, semAnimacao: false, modoLeve: false };
 
 function ler() {
   try {

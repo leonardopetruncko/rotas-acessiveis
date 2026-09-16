@@ -6,6 +6,7 @@ const OPCOES = [
   ['simples', 'Linguagem simples', 'Respostas curtas e diretas'],
   ['lerAuto', 'Ler respostas em voz alta', 'A assistente fala sozinha'],
   ['semAnimacao', 'Menos movimento', 'Para animações do mapa'],
+  ['modoLeve', '⚡ Modo leve', 'Mapa mais rápido para celular e internet fraca'],
 ];
 
 export default function MenuAcessibilidade({ prefs, alternar }) {

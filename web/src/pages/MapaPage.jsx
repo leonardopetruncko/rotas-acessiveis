@@ -44,6 +44,7 @@ export default function MapaPage() {
   const [tour, setTour] = useState(false);
   const [seguir, setSeguir] = useState(false);
   const [contagem, setContagem] = useState(null);
+  const [qualidade, setQualidade] = useState(null); // null = automático
   const [horaReal, setHoraReal] = useState(agoraSP());
   useEffect(() => { const id = setInterval(() => setHoraReal(agoraSP()), 30000); return () => clearInterval(id); }, []);
   useEffect(() => {
@@ -203,6 +204,8 @@ export default function MapaPage() {
         <Mapa3D mapa={mapa} rotas={rotas3D} origem={origem} destino={destinoFinal} camada={camada}
           modo2D={modo2D} emergencia={modo === 'saida'} selecionado={selecionado} calmo={a11y.semAnimacao} agora={horaSim || horaReal}
           tour={tour} seguir={seguir && rotas3D.length > 0} onContagem={setContagem}
+          qualidade={a11y.modoLeve ? 'leve' : qualidade || undefined}
+          onQualidade={q => avisar(q === 'leve' ? '⚡ Aparelho sobrecarregado: ativei o modo leve do mapa.' : '', 'info')}
           onPontoClick={clicarPonto} onVazio={() => setSelecionado(null)} />
 
         <header className="mapa-topo">
