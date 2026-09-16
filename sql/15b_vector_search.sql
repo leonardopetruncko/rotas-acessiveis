@@ -41,6 +41,16 @@ INSERT INTO ac_intencao VALUES ('MAL_ESTAR',       'NECESSIDADE', 'Mal-estar ou 
 INSERT INTO ac_intencao VALUES ('EMERGENCIA',      'NECESSIDADE', 'Emergência: precisa sair com segurança', 'SAIDA', 'SAIDA', NULL);
 INSERT INTO ac_intencao VALUES ('COMIDA',          'NECESSIDADE', 'Quer comer ou beber', 'ROTA', 'ALIMENTACAO', NULL);
 INSERT INTO ac_intencao VALUES ('PALESTRA',        'NECESSIDADE', 'Quer ver palestra, show ou apresentação', 'ROTA', 'PALCO', NULL);
+-- PERGUNTAS sobre o evento (conversa)
+INSERT INTO ac_intencao VALUES ('Q_SAUDACAO',      'PERGUNTA', 'Saudação / o que a assistente faz', NULL, NULL, NULL);
+INSERT INTO ac_intencao VALUES ('Q_EVENTO',        'PERGUNTA', 'Qual é o evento', NULL, NULL, NULL);
+INSERT INTO ac_intencao VALUES ('Q_O_QUE_TEM',     'PERGUNTA', 'O que tem no evento', NULL, NULL, NULL);
+INSERT INTO ac_intencao VALUES ('Q_ONDE_FICA',     'PERGUNTA', 'Onde fica um lugar', NULL, NULL, NULL);
+INSERT INTO ac_intencao VALUES ('Q_SOBRE_LUGAR',   'PERGUNTA', 'O que tem / acontece em um lugar', NULL, NULL, NULL);
+INSERT INTO ac_intencao VALUES ('Q_PROGRAMACAO',   'PERGUNTA', 'Programação e horários', NULL, NULL, NULL);
+INSERT INTO ac_intencao VALUES ('Q_ACESSIBILIDADE','PERGUNTA', 'Recursos de acessibilidade', NULL, NULL, NULL);
+INSERT INTO ac_intencao VALUES ('Q_LOTACAO',       'PERGUNTA', 'Onde está cheio ou tranquilo agora', NULL, NULL, NULL);
+INSERT INTO ac_intencao VALUES ('Q_SAIDAS',        'PERGUNTA', 'Quais são as saídas', NULL, NULL, NULL);
 INSERT INTO ac_intencao VALUES ('P_CADEIRANTE',    'PERFIL', 'Usa cadeira de rodas ou carrinho', NULL, NULL, 'CADEIRANTE');
 INSERT INTO ac_intencao VALUES ('P_MOBILIDADE',    'PERFIL', 'Mobilidade reduzida', NULL, NULL, 'MOBILIDADE');
 INSERT INTO ac_intencao VALUES ('P_NEURO',         'PERFIL', 'Sensível a barulho e multidão', NULL, NULL, 'NEURODIVERGENTE');
@@ -66,6 +76,30 @@ UNION ALL SELECT 'COMIDA', column_value FROM TABLE(sys.odcivarchar2list(
 UNION ALL SELECT 'PALESTRA', column_value FROM TABLE(sys.odcivarchar2list(
   'quero ver a palestra', 'onde é o palco', 'keynote principal', 'quero assistir a apresentação',
   'onde vai ser o show', 'where is the main stage'))
+UNION ALL SELECT 'Q_SAUDACAO', column_value FROM TABLE(sys.odcivarchar2list(
+  'oi', 'olá, tudo bem?', 'bom dia', 'quem é você', 'o que você faz', 'como você pode me ajudar', 'me ajuda', 'hello'))
+UNION ALL SELECT 'Q_EVENTO', column_value FROM TABLE(sys.odcivarchar2list(
+  'que evento é esse', 'qual o nome do evento', 'em que evento eu estou', 'me fala sobre o evento', 'que lugar é esse', 'what event is this'))
+UNION ALL SELECT 'Q_O_QUE_TEM', column_value FROM TABLE(sys.odcivarchar2list(
+  'o que tem no evento', 'o que tem pra fazer aqui', 'quais stands tem', 'quais empresas estão no evento', 'o que posso visitar',
+  'me mostra as atrações', 'o que tem de interessante', 'what is there to see'))
+UNION ALL SELECT 'Q_ONDE_FICA', column_value FROM TABLE(sys.odcivarchar2list(
+  'onde fica a praça de alimentação', 'onde é o stand da aws', 'como chego no palco', 'em que parte fica a arena', 'onde fica o credenciamento',
+  'me leva até a nvidia', 'qual o caminho para os fiap labs', 'where is the food court'))
+UNION ALL SELECT 'Q_SOBRE_LUGAR', column_value FROM TABLE(sys.odcivarchar2list(
+  'o que tem no stand da oracle', 'o que acontece na arena', 'me fala sobre a sala de acolhimento', 'o que é o fiap labs',
+  'o que tem no palco principal', 'what is in the oracle booth'))
+UNION ALL SELECT 'Q_PROGRAMACAO', column_value FROM TABLE(sys.odcivarchar2list(
+  'qual é a programação', 'o que está acontecendo agora', 'que horas começa a keynote', 'agenda do evento', 'próximas palestras',
+  'que horas é a final do hackathon', 'what is the schedule'))
+UNION ALL SELECT 'Q_ACESSIBILIDADE', column_value FROM TABLE(sys.odcivarchar2list(
+  'o evento é acessível', 'tem rampa', 'quais recursos de acessibilidade tem', 'onde tem degraus', 'tem elevador',
+  'é acessível para cadeirante', 'is it wheelchair accessible'))
+UNION ALL SELECT 'Q_LOTACAO', column_value FROM TABLE(sys.odcivarchar2list(
+  'onde está mais cheio', 'qual lugar está tranquilo agora', 'tem muita gente no evento', 'onde está vazio', 'onde está barulhento agora',
+  'o boulevard está lotado', 'where is it crowded'))
+UNION ALL SELECT 'Q_SAIDAS', column_value FROM TABLE(sys.odcivarchar2list(
+  'quais são as saídas', 'onde ficam as saídas de emergência', 'quantas saídas tem', 'as saídas estão liberadas', 'where are the exits'))
 UNION ALL SELECT 'P_CADEIRANTE', column_value FROM TABLE(sys.odcivarchar2list(
   'sou cadeirante', 'estou de cadeira de rodas', 'uso cadeira de rodas', 'estou com carrinho de bebê',
   'não posso usar escada', 'I use a wheelchair'))
@@ -80,7 +114,8 @@ UPDATE ac_intencao_frase SET embedding = VECTOR_EMBEDDING(doc_model USING frase 
 
 -- lugares: texto de busca = nome + tipo em linguagem natural
 UPDATE ac_ponto p
-   SET busca_texto = p.nome || ' ' || CASE p.tipo
+   SET busca_texto = p.nome || ' ' || (SELECT MAX(a.subtitulo) FROM ac_area a WHERE a.evento_id = p.evento_id AND a.codigo = 'A_' || p.codigo)
+                  || ' ' || CASE p.tipo
          WHEN 'SAIDA' THEN 'saída exit'
          WHEN 'STAND' THEN 'stand estande empresa'
          WHEN 'PALCO' THEN 'palco palestra keynote show'

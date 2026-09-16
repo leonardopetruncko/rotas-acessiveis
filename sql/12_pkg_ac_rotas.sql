@@ -322,7 +322,7 @@ CREATE OR REPLACE PACKAGE BODY ac_rotas AS
                           FROM ac_perfil), '[]') FORMAT JSON,
       'areas' VALUE NVL((SELECT JSON_ARRAYAGG(JSON_OBJECT('codigo' VALUE codigo, 'nome' VALUE nome, 'tipo' VALUE tipo,
                            'x' VALUE x, 'y' VALUE y, 'largura' VALUE largura, 'altura' VALUE altura,
-                           'cor' VALUE cor, 'subtitulo' VALUE subtitulo)
+                           'cor' VALUE cor, 'subtitulo' VALUE subtitulo, 'descricao' VALUE descricao)
                          ORDER BY id RETURNING CLOB)
                          FROM ac_area WHERE evento_id = e.id), '[]') FORMAT JSON,
       'pontos' VALUE NVL((SELECT JSON_ARRAYAGG(JSON_OBJECT('codigo' VALUE codigo, 'nome' VALUE nome, 'tipo' VALUE tipo,
@@ -339,6 +339,10 @@ CREATE OR REPLACE PACKAGE BODY ac_rotas AS
                            JOIN ac_ponto pa ON pa.id = t.ponto_a
                            JOIN ac_ponto pb ON pb.id = t.ponto_b
                           WHERE t.evento_id = e.id), '[]') FORMAT JSON,
+      'programacao' VALUE NVL((SELECT JSON_ARRAYAGG(JSON_OBJECT('ponto' VALUE ponto, 'titulo' VALUE titulo,
+                                'inicio' VALUE inicio, 'fim' VALUE fim, 'ruido_prev' VALUE ruido_prev)
+                              ORDER BY inicio, id RETURNING CLOB)
+                              FROM ac_programacao WHERE evento_id = e.id), '[]') FORMAT JSON,
       'reportes' VALUE NVL((SELECT JSON_ARRAYAGG(JSON_OBJECT('ponto' VALUE codigo, 'nome' VALUE nome, 'tipo' VALUE tipo,
                               'por' VALUE reportado_por, 'em' VALUE criado_em)
                             ORDER BY criado_em DESC RETURNING CLOB)

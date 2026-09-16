@@ -53,6 +53,7 @@ export function cenario(c, importMetaUrl) {
   SELECT MAX(id) INTO v_ev FROM ac_evento WHERE codigo = '${cod}';
   IF v_ev IS NOT NULL THEN
     DELETE FROM ac_reporte WHERE evento_id = v_ev;
+    DELETE FROM ac_programacao WHERE evento_id = v_ev;
     DELETE FROM ac_trecho  WHERE evento_id = v_ev;
     DELETE FROM ac_ponto   WHERE evento_id = v_ev;
     DELETE FROM ac_area    WHERE evento_id = v_ev;
@@ -67,8 +68,10 @@ ON (t.codigo = s.codigo)
 WHEN MATCHED THEN UPDATE SET t.nome=s.nome, t.evita_escada=s.evita_escada, t.peso_ruido=s.peso_ruido, t.peso_lotacao=s.peso_lotacao, t.velocidade_ms=s.velocidade_ms, t.descricao=s.descricao
 WHEN NOT MATCHED THEN INSERT (codigo,nome,evita_escada,peso_ruido,peso_lotacao,velocidade_ms,descricao) VALUES (s.codigo,s.nome,s.evita_escada,s.peso_ruido,s.peso_lotacao,s.velocidade_ms,s.descricao);`);
     L.push(`INSERT INTO ac_evento (codigo, nome, local, largura_px, altura_px, escala_m_px, descricao, origem_padrao) VALUES (${q(cod)}, ${q(e.nome)}, ${q(e.local)}, ${e.largura_px}, ${e.altura_px}, ${e.escala_m_px}, ${q(e.descricao)}, ${q(e.origem_padrao)});`);
-    for (const [k, n, t, x, y, w, h, cor = null, sub = null] of c.areas)
-      L.push(`INSERT INTO ac_area (evento_id,codigo,nome,tipo,x,y,largura,altura,cor,subtitulo) VALUES (${ev},${q(k)},${q(n)},${q(t)},${x},${y},${w},${h},${q(cor)},${q(sub)});`);
+    for (const [k, n, t, x, y, w, h, cor = null, sub = null, desc = null] of c.areas)
+      L.push(`INSERT INTO ac_area (evento_id,codigo,nome,tipo,x,y,largura,altura,cor,subtitulo,descricao) VALUES (${ev},${q(k)},${q(n)},${q(t)},${x},${y},${w},${h},${q(cor)},${q(sub)},${q(desc)});`);
+    for (const [ponto, titulo, ini, fim, ruido = null] of c.programacao || [])
+      L.push(`INSERT INTO ac_programacao (evento_id,ponto,titulo,inicio,fim,ruido_prev) VALUES (${ev},${q(ponto)},${q(titulo)},${q(ini)},${q(fim)},${ruido ?? 'NULL'});`);
     for (const [k, n, t, x, y] of c.pontos)
       L.push(`INSERT INTO ac_ponto (evento_id,codigo,nome,tipo,x,y) VALUES (${ev},${q(k)},${q(n)},${q(t)},${x},${y});`);
     for (const [a, b, via, esc, r, l] of c.trechos)

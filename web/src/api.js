@@ -77,6 +77,7 @@ export const api = {
   reportar: (ev, body) => comFallback(() => req(`/eventos/${ev}/reportes`, post(body)), async () => (await motor(ev)).reportar(body)),
   // assistente semântico (ONNX + Vector Search no Oracle); offline = null -> front usa regras locais
   assistente: (ev, texto) => comFallback(() => req(`/eventos/${ev}/assistente`, post({ texto })), async () => null),
+  conversa: (ev, body) => comFallback(() => req(`/eventos/${ev}/conversa`, post(body)), async () => null),
   reset: ev => comFallback(() => req(`/eventos/${ev}/reset`, { method: 'POST' }), async () => (await motor(ev)).reset()),
 };
 

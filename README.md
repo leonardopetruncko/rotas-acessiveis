@@ -10,7 +10,9 @@ perfil de deslocamento — cadeirante, mobilidade reduzida, neurodivergente/sens
 - Evita **escadas e degraus** para quem não pode usá-los; evita **barulho e aglomeração** para quem sofre com eles.
 - **Saída de emergência por perfil**: sugere a saída viável para a pessoa e mostra as alternativas e as interditadas.
 - **Tempo real**: público e equipe reportam *cheio / barulho / bloqueado* e as rotas são recalculadas no banco.
-- **Assistente em linguagem natural**: "estou no stand da Oracle, o barulho está insuportável" → perfil, origem,
+- **Chat com a assistente do evento**: responde "que evento é esse", "o que tem aqui", "onde fica a praça de alimentação",
+  "o que está acontecendo agora", "onde está cheio", "quais as saídas" com dados ao vivo do banco e oferece "Traçar rota".
+- **Entendimento de pedidos**: "estou no stand da Oracle, o barulho está insuportável" → perfil, origem,
   destino e rota. A interpretação é feita **dentro do Oracle** com modelo **ONNX de embedding** + **AI Vector Search**.
 - **Princípio de design:** a IA **informa e explica**; **quem decide é a pessoa** (botões "Vou seguir esta rota" /
   "Ver outras opções", perfil sugerido sempre editável).
@@ -45,6 +47,7 @@ Cenários de demonstração (dados **sintéticos**, plantas ilustrativas): `NEXT
 │   │                                                                       │
 │   ├─ AC_ROTAS (PL/SQL) ── Dijkstra ponderado por perfil, rota de saída,   │
 │   │                       comparação de perfis, reportes, reset           │
+│   ├─ AC_CONVERSA (PL/SQL) ── chat: tipo de pergunta por vetor + resposta com dados ao vivo
 │   └─ AC_ASSISTENTE (PL/SQL)                                               │
 │        ├─ VECTOR_EMBEDDING(DOC_MODEL) ── modelo ONNX all_MiniLM_L12_v2    │
 │        ├─ VECTOR_DISTANCE(..., COSINE) ── k-NN sobre frases de exemplo    │
@@ -71,6 +74,7 @@ Cenários de demonstração (dados **sintéticos**, plantas ilustrativas): `NEXT
 | GET | `eventos/{evento}/rota?perfil=&origem=&destino=` | Rota sugerida + instruções + alertas + explicação |
 | GET | `eventos/{evento}/comparar?origem=&destino=` | Mesmo trajeto para todos os perfis |
 | GET | `eventos/{evento}/saida?perfil=&origem=` | Saída mais segura + alternativas + saídas indisponíveis |
+| POST | `eventos/{evento}/conversa` | `{"texto","origem","perfil"}` → resposta em linguagem natural com dados do banco, ação sugerida (rota/saída), explicação (método, confiança) |
 | POST | `eventos/{evento}/assistente` | `{"texto": "..."}` → necessidade, perfil, origem, destino, confiança, frase parecida, método |
 | POST | `eventos/{evento}/reportes` | `{"ponto","tipo":"CHEIO\|BARULHO\|BLOQUEIO\|LIBERADO","usuario"}` |
 | POST | `eventos/{evento}/reset` | Restaura o cenário de demonstração |
@@ -106,7 +110,8 @@ Cenários de demonstração (dados **sintéticos**, plantas ilustrativas): `NEXT
 | `AC_TRECHO` | arestas (distância, escada, ruído, lotação, valores base, via/corredor, bloqueado) |
 | `AC_PERFIL` | perfis e pesos (evita escada, peso ruído, peso lotação, velocidade) |
 | `AC_REPORTE` | reportes do público/equipe (crowdsourcing) |
-| `AC_INTENCAO` / `AC_INTENCAO_FRASE` | necessidades/perfis e frases de exemplo em PT com `embedding VECTOR(384)` |
+| `AC_INTENCAO` / `AC_INTENCAO_FRASE` | tipos de pergunta, necessidades e perfis + frases de exemplo em PT com `embedding VECTOR(384)` |
+| `AC_PROGRAMACAO` | agenda por lugar (horário, ruído previsto) — ilustrativa |
 | `AC_ROTA` / `AC_ROTA_TRECHO` | legado (POC inicial em APEX, evento 1) |
 
 ## 5. Instalação e execução
@@ -119,6 +124,7 @@ Cenários de demonstração (dados **sintéticos**, plantas ilustrativas): `NEXT
 
 ```bash
 node db/run-sql.mjs sql/10_modelo_v2.sql          # modelo de dados v2 (idempotente)
+node db/run-sql.mjs sql/16a_conversa_modelo.sql   # tabelas de descrição/programação (antes dos seeds)
 node db/run-sql.mjs sql/12_pkg_ac_rotas.sql       # motor de rotas
 node db/run-sql.mjs sql/11_seed_expo.sql          # cenário EXPO26
 node db/run-sql.mjs sql/14_seed_next.sql          # cenário NEXT26 (FIAP NEXT)
@@ -126,6 +132,8 @@ node db/run-sql.mjs sql/13_ords_api.sql           # API REST
 node db/run-sql.mjs sql/15a_onnx_modelo.sql       # carrega o modelo ONNX no banco
 node db/run-sql.mjs sql/15b_vector_search.sql     # frases/lugares vetorizados  (rodar de novo após re-seed)
 node db/run-sql.mjs sql/15c_pkg_ac_assistente.sql # assistente semântico + endpoint
+node db/run-sql.mjs sql/16a_conversa_modelo.sql   # base de conhecimento (descrições, programação)
+node db/run-sql.mjs sql/16b_pkg_ac_conversa.sql   # chat do evento (RAG in-database) + endpoint
 node db/snapshot.mjs                              # cópia offline + prova de paridade motor local × Oracle
 ```
 

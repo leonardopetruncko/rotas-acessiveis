@@ -134,6 +134,20 @@ button.chip:hover { border-color: var(--pri); }
 .pergunta input { flex: 1; min-width: 0; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--borda); background: #0a1122; }
 .resposta { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: #0b2530; border: 1px solid #155e63; color: #ccfbf1; font-size: 14px; }
 
+.chat { background: linear-gradient(180deg, #13223f, var(--card)); border-color: #2b3f69; display: grid; gap: 10px; }
+.chat .card-tit { margin-bottom: 0; }
+.chat-msgs { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; padding-right: 2px; }
+.bolha { max-width: 92%; padding: 9px 12px; border-radius: 14px; font-size: 14px; display: grid; gap: 6px; }
+.bolha p { margin: 0; white-space: pre-line; }
+.bolha.ia { align-self: flex-start; background: #0b2530; border: 1px solid #155e63; color: #e0f7f2; border-bottom-left-radius: 4px; }
+.bolha.eu { align-self: flex-end; background: #1e2a4a; border: 1px solid #334670; border-bottom-right-radius: 4px; }
+.bolha-acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+.bolha .explica { color: #7dd3c0; font-size: 11px; }
+.digitando { flex-direction: row; display: flex; gap: 4px; padding: 12px 14px; }
+.digitando span { width: 6px; height: 6px; border-radius: 50%; background: #7dd3c0; animation: pisca 1s infinite; }
+.digitando span:nth-child(2) { animation-delay: .15s; }
+.digitando span:nth-child(3) { animation-delay: .3s; }
+@keyframes pisca { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
 .resposta p { margin: 0; }
 .resposta .explica { display: block; margin-top: 6px; color: #7dd3c0; font-size: 12px; }
 .perfis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }

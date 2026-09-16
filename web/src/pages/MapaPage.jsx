@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Mapa3D from '../components/Mapa3D.jsx';
 import QrModal from '../components/QrModal.jsx';
+import Chat from '../components/Chat.jsx';
 import { api, aoMudarModo, emModoOffline, lerParams } from '../api.js';
-import { interpretar } from '../lib/intencao.js';
-import { calar, falar, ouvir, podeFalar, podeOuvir } from '../lib/voz.js';
+import { falar, podeFalar } from '../lib/voz.js';
 import { NIVEL, NIVEL_TXT, PERFIS_UI, TIPO_UI, ehDestino } from '../lib/tema.js';
 
 const assinatura = m => m ? m.trechos.map(t => `${t.ruido}${t.lotacao}${t.bloqueado}`).join('') + m.pontos.map(p => p.bloqueado).join('') : '';
@@ -33,10 +33,6 @@ export default function MapaPage() {
   const [offline, setOffline] = useState(emModoOffline());
   useEffect(() => aoMudarModo(setOffline), []);
 
-  const [pergunta, setPergunta] = useState('');
-  const [resposta, setResposta] = useState(null);
-  const [ouvindo, setOuvindo] = useState(false);
-  const recRef = useRef(null);
   const ultimaRota = useRef({ chave: '', caminho: '' });
 
   const avisar = useCallback((txt, tipo = 'info') => {
@@ -108,43 +104,13 @@ export default function MapaPage() {
   const irPara = (cod, novoModo = 'rota') => { setDestino(cod); setModo(novoModo); };
   const emergencia = () => { setModo('saida'); avisar('🚨 Modo emergência: mostrando a saída mais segura para o seu perfil.', 'alerta'); };
 
-  const perguntar = async texto => {
-    const q = (texto ?? pergunta).trim();
-    if (!q || !mapa) return;
-    setResposta({ texto: 'Entendendo…' });
-    let i;
-    try {
-      // 1º: Oracle (modelo ONNX in-database + AI Vector Search)
-      const r = await api.assistente(ev, q);
-      if (r) {
-        i = {
-          perfil: r.perfil?.codigo, origem: r.origem?.codigo, destino: r.destino?.codigo, modo: r.modo,
-          resposta: r.resposta, naoEntendi: !r.entendido,
-          explicacao: r.necessidade && {
-            metodo: r.necessidade.metodo, confianca: r.necessidade.confianca, parecida: r.necessidade.frase_parecida,
-          },
-        };
-      }
-    } catch { /* cai nas regras locais */ }
-    // offline: regras locais no aparelho
-    if (!i) i = { ...interpretar(q, mapa.pontos, mapa.perfis), explicacao: { metodo: 'REGRAS_LOCAIS' } };
-    if (i.perfil) setPerfil(i.perfil);
-    if (i.origem) setOrigem(i.origem);
-    if (i.modo === 'saida') setModo('saida');
-    else if (i.destino) { setDestino(i.destino); setModo(m => (m === 'comparar' ? 'comparar' : 'rota')); }
-    setResposta({ texto: i.resposta, explicacao: i.explicacao });
-    if (!i.naoEntendi) setPergunta('');
+  const acaoChat = a => {
+    if (a.tipo === 'SAIDA') emergencia();
+    else if (a.tipo === 'ROTA' && a.destino) irPara(a.destino, modo === 'comparar' ? 'comparar' : 'rota');
   };
-
-  const microfone = () => {
-    if (ouvindo) { recRef.current?.stop(); return; }
-    calar();
-    setOuvindo(true);
-    recRef.current = ouvir({
-      onTexto: (txt, final) => { setPergunta(txt); if (final) perguntar(txt); },
-      onFim: () => setOuvindo(false),
-      onErro: () => { setOuvindo(false); avisar('Não consegui ouvir. Verifique a permissão do microfone.', 'erro'); },
-    });
+  const contextoChat = c => {
+    if (c.origem) setOrigem(c.origem);
+    if (c.perfil) setPerfil(c.perfil);
   };
 
   const reportar = async tipo => {
@@ -250,33 +216,8 @@ export default function MapaPage() {
       </section>
 
       <aside className="painel">
-        {/* assistente */}
-        <div className="card assistente">
-          <div className="card-tit">💬 Assistente <small>informa — você decide</small></div>
-          <form className="pergunta" onSubmit={e => { e.preventDefault(); perguntar(); }}>
-            <input value={pergunta} onChange={e => setPergunta(e.target.value)}
-              placeholder={ouvindo ? 'Ouvindo…' : 'Ex.: estou no stand da Oracle, o barulho está insuportável'} aria-label="Pergunte ao assistente" />
-            {podeOuvir && <button type="button" className={`btn-icone ${ouvindo ? 'gravando' : ''}`} onClick={microfone} aria-label="Falar">🎤</button>}
-            <button className="btn-icone btn-pri" aria-label="Enviar">➤</button>
-          </form>
-          {resposta && (
-            <div className="resposta">
-              <p>{resposta.texto}</p>
-              {resposta.explicacao && (
-                <small className="explica">
-                  {{ VECTOR_SEARCH: '🧠 Vector Search no Oracle', REGRA_SEGURANCA: '🛡️ Regra de segurança', PALAVRA_CHAVE: '🔤 Palavra-chave', REGRAS_LOCAIS: '📴 Regras locais (offline)' }[resposta.explicacao.metodo] || resposta.explicacao.metodo}
-                  {resposta.explicacao.confianca != null && ` · confiança ${Math.round(resposta.explicacao.confianca * 100)}%`}
-                  {resposta.explicacao.parecida && ` · parecido com “${resposta.explicacao.parecida}”`}
-                </small>
-              )}
-            </div>
-          )}
-          <div className="chips">
-            {['O barulho está insuportável, preciso de um lugar calmo', 'Estou de cadeira de rodas, onde fica o banheiro?', 'Emergência! Como eu saio daqui?'].map(s => (
-              <button key={s} className="chip" onClick={() => perguntar(s)}>{s}</button>
-            ))}
-          </div>
-        </div>
+        <Chat ev={ev} mapa={mapa} origem={origem} perfil={perfil} onAcao={acaoChat} onContexto={contextoChat}
+          onLugar={cod => setSelecionado(cod)} onErro={msg => avisar(msg, 'erro')} />
 
         {/* perfil */}
         <div className="card">
