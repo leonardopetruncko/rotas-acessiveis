@@ -1,0 +1,4 @@
+.env
+wallet/
+node_modules/
+dist/
