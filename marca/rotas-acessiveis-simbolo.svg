@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Rotas Acessíveis">
+  <title>Rotas Acessíveis — símbolo</title>
+  <defs>
+    <linearGradient id="ra-turquesa" x1="40" y1="212" x2="216" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5eead4"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="ra-aro" x1="32" y1="32" x2="224" y2="224" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.55" stop-color="#5eead4"/>
+      <stop offset="1" stop-color="#2dd4bf" stop-opacity="0.55"/>
+    </linearGradient>
+  </defs>
+
+  <!-- aro da bússola -->
+  <circle cx="128" cy="128" r="96" fill="none" stroke="url(#ra-aro)" stroke-width="12"/>
+
+  <!-- marcas dos pontos cardeais -->
+  <g stroke="#5eead4" stroke-width="9" stroke-linecap="round" opacity="0.9">
+    <path d="M128 12v22"/>
+    <path d="M128 222v22"/>
+    <path d="M12 128h22"/>
+    <path d="M222 128h22"/>
+  </g>
+
+  <!-- a agulha é a própria rota: sai do ponto de partida e aponta o caminho -->
+  <path d="M74 182C74 182 96 150 124 140S176 104 186 72"
+        fill="none" stroke="url(#ra-turquesa)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M158 74l30-4 -4 30" fill="none" stroke="#22d3ee" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ponto de partida -->
+  <circle cx="74" cy="182" r="20" fill="#070b16"/>
+  <circle cx="74" cy="182" r="20" fill="none" stroke="#5eead4" stroke-width="11"/>
+</svg>

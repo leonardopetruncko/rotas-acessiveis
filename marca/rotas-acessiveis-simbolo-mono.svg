@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Rotas Acessíveis">
+  <title>Rotas Acessíveis — símbolo em uma cor só</title>
+  <!-- troque currentColor/ fill por qualquer cor sólida: use em fundo claro ou escuro -->
+  <g fill="none" stroke="currentColor" color="#0f766e">
+    <circle cx="128" cy="128" r="96" stroke-width="12"/>
+    <g stroke-width="9" stroke-linecap="round">
+      <path d="M128 12v22"/><path d="M128 222v22"/><path d="M12 128h22"/><path d="M222 128h22"/>
+    </g>
+    <path d="M74 182C74 182 96 150 124 140S176 104 186 72" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M158 74l30-4 -4 30" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="74" cy="182" r="20" stroke-width="11"/>
+  </g>
+</svg>
